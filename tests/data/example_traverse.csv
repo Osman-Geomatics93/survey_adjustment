@@ -1,0 +1,27 @@
+# Example traverse data file
+# This file contains a simple closed traverse with 5 stations
+# Coordinates are in meters, angles in decimal degrees
+
+# ===== POINTS =====
+# point_id,name,easting,northing,fixed_e,fixed_n,sigma_e,sigma_n
+POINT,A,Control A,1000.000,2000.000,true,true,0.0,0.0
+POINT,B,Traverse B,1500.000,2300.000,false,false,0.010,0.010
+POINT,C,Control C,2000.000,2000.000,true,true,0.0,0.0
+POINT,D,Traverse D,1500.000,1700.000,false,false,0.010,0.010
+POINT,E,Traverse E,1000.000,1700.000,false,false,0.010,0.010
+
+# ===== DISTANCES =====
+# obs_id,from_point,to_point,distance,sigma_distance
+DIST,D001,A,B,583.095,0.003
+DIST,D002,B,C,583.095,0.003
+DIST,D003,C,D,583.095,0.003
+DIST,D004,D,E,500.000,0.003
+DIST,D005,E,A,300.000,0.003
+
+# ===== ANGLES =====
+# obs_id,at_point,from_point,to_point,angle,sigma_angle
+ANGLE,ANG001,A,E,B,53.1301,0.00015
+ANGLE,ANG002,B,A,C,90.0000,0.00015
+ANGLE,ANG003,C,B,D,126.8699,0.00015
+ANGLE,ANG004,D,C,E,126.8699,0.00015
+ANGLE,ANG005,E,D,A,143.1301,0.00015
