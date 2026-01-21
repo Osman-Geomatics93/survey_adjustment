@@ -1,7 +1,10 @@
-"""
-Solver module for least-squares adjustment.
+"""survey_adjustment.core.solver
 
-This module will contain the adjustment computation engine (Phase 1).
+Pure-Python least-squares solvers (no QGIS imports).
 """
 
-# Phase 1 implementation
+from .least_squares_2d import adjust_network_2d
+
+__all__ = [
+    "adjust_network_2d",
+]

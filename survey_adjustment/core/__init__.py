@@ -23,6 +23,8 @@ from .results import (
     ResidualInfo
 )
 
+from .solver import adjust_network_2d
+
 __all__ = [
     # Models
     "Point",
@@ -39,4 +41,7 @@ __all__ = [
     "ErrorEllipse",
     "ChiSquareTestResult",
     "ResidualInfo",
+
+    # Solvers
+    "adjust_network_2d",
 ]
