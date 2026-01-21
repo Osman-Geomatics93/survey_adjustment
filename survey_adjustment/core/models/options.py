@@ -48,6 +48,11 @@ class AdjustmentOptions:
     compute_covariances: bool = True
     robust_estimator: Optional[RobustEstimator] = None  # Phase 5
     compute_error_ellipses: bool = True
+    # Phase 2 statistical settings
+    alpha_local: float = 0.01  # local test significance (two-sided)
+    mdb_power: float = 0.80    # desired test power (1-beta)
+    compute_reliability: bool = True
+
     outlier_threshold: float = 3.0
     angle_units_degrees: bool = True
     sigma_units_arcseconds: bool = False
@@ -65,6 +70,12 @@ class AdjustmentOptions:
 
         if self.a_priori_variance <= 0:
             raise ValueError("a_priori_variance must be positive")
+
+        if not 0 < self.alpha_local < 1:
+            raise ValueError("alpha_local must be between 0 and 1")
+
+        if not 0 < self.mdb_power < 1:
+            raise ValueError("mdb_power must be between 0 and 1")
 
         if self.outlier_threshold <= 0:
             raise ValueError("outlier_threshold must be positive")
@@ -101,6 +112,9 @@ class AdjustmentOptions:
             "compute_covariances": self.compute_covariances,
             "robust_estimator": self.robust_estimator.value if self.robust_estimator else None,
             "compute_error_ellipses": self.compute_error_ellipses,
+            "alpha_local": self.alpha_local,
+            "mdb_power": self.mdb_power,
+            "compute_reliability": self.compute_reliability,
             "outlier_threshold": self.outlier_threshold,
             "angle_units_degrees": self.angle_units_degrees,
             "sigma_units_arcseconds": self.sigma_units_arcseconds
@@ -131,6 +145,9 @@ class AdjustmentOptions:
             compute_covariances=data.get("compute_covariances", True),
             robust_estimator=robust,
             compute_error_ellipses=data.get("compute_error_ellipses", True),
+            alpha_local=data.get("alpha_local", 0.01),
+            mdb_power=data.get("mdb_power", 0.80),
+            compute_reliability=data.get("compute_reliability", True),
             outlier_threshold=data.get("outlier_threshold", 3.0),
             angle_units_degrees=data.get("angle_units_degrees", True),
             sigma_units_arcseconds=data.get("sigma_units_arcseconds", False)

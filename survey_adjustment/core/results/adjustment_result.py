@@ -110,6 +110,8 @@ class ChiSquareTestResult:
     critical_upper: float
     confidence_level: float
     passed: bool
+    p_value: float | None = None
+    degrees_of_freedom: int | None = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize chi-square test result to dictionary."""
@@ -119,7 +121,9 @@ class ChiSquareTestResult:
             "critical_lower": self.critical_lower,
             "critical_upper": self.critical_upper,
             "confidence_level": self.confidence_level,
-            "passed": self.passed
+            "passed": self.passed,
+            "p_value": self.p_value,
+            "degrees_of_freedom": self.degrees_of_freedom
         }
 
     @classmethod
@@ -130,7 +134,9 @@ class ChiSquareTestResult:
             critical_lower=data["critical_lower"],
             critical_upper=data["critical_upper"],
             confidence_level=data["confidence_level"],
-            passed=data["passed"]
+            passed=data["passed"],
+            p_value=data.get("p_value"),
+            degrees_of_freedom=data.get("degrees_of_freedom")
         )
 
 
@@ -155,6 +161,10 @@ class ResidualInfo:
     computed: float
     residual: float
     standardized_residual: float
+    redundancy_number: float | None = None
+    mdb: float | None = None
+    external_reliability: float | None = None
+    is_outlier_candidate: bool = False
     flagged: bool = False
     from_point: Optional[str] = None
     to_point: Optional[str] = None
@@ -169,6 +179,10 @@ class ResidualInfo:
             "computed": self.computed,
             "residual": self.residual,
             "standardized_residual": self.standardized_residual,
+            "redundancy_number": self.redundancy_number,
+            "mdb": self.mdb,
+            "external_reliability": self.external_reliability,
+            "is_outlier_candidate": self.is_outlier_candidate,
             "flagged": self.flagged
         }
         if self.from_point:
@@ -412,6 +426,10 @@ class AdjustmentResult:
                 computed=res_data["computed"],
                 residual=res_data["residual"],
                 standardized_residual=res_data["standardized_residual"],
+                redundancy_number=res_data.get("redundancy_number"),
+                mdb=res_data.get("mdb"),
+                external_reliability=res_data.get("external_reliability"),
+                is_outlier_candidate=res_data.get("is_outlier_candidate", False),
                 flagged=res_data.get("flagged", False),
                 from_point=res_data.get("from_point"),
                 to_point=res_data.get("to_point"),

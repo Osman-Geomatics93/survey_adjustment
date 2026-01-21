@@ -245,6 +245,22 @@ ADJUSTMENT_OPTIONS_SCHEMA: Dict[str, Any] = {
             "exclusiveMinimum": 0,
             "default": 3.0
         },
+        "alpha_local": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "exclusiveMaximum": 1,
+            "default": 0.01
+        },
+        "mdb_power": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "exclusiveMaximum": 1,
+            "default": 0.8
+        },
+        "compute_reliability": {
+            "type": "boolean",
+            "default": True
+        },
         "angle_units_degrees": {
             "type": "boolean",
             "default": True
@@ -289,6 +305,10 @@ RESIDUAL_SCHEMA: Dict[str, Any] = {
         "computed": {"type": "number"},
         "residual": {"type": "number"},
         "standardized_residual": {"type": "number"},
+        "redundancy_number": {"type": ["number", "null"]},
+        "mdb": {"type": ["number", "null"]},
+        "external_reliability": {"type": ["number", "null"]},
+        "is_outlier_candidate": {"type": "boolean"},
         "flagged": {"type": "boolean"}
     },
     "required": ["obs_id", "obs_type", "observed", "computed", "residual", "standardized_residual"]
@@ -342,7 +362,9 @@ ADJUSTMENT_RESULT_SCHEMA: Dict[str, Any] = {
                 "critical_lower": {"type": "number"},
                 "critical_upper": {"type": "number"},
                 "confidence_level": {"type": "number"},
-                "passed": {"type": "boolean"}
+                "passed": {"type": "boolean"},
+                "p_value": {"type": ["number", "null"]},
+                "degrees_of_freedom": {"type": ["integer", "null"]}
             }
         },
         "adjusted_points": {

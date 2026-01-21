@@ -35,7 +35,19 @@ from ..results.adjustment_result import (
     AdjustmentResult,
     ResidualInfo,
     ErrorEllipse,
-    ChiSquareTestResult,
+)
+
+from ..statistics import (
+    chi_square_global_test,
+    standardized_residuals,
+    local_outlier_threshold,
+    normal_ppf,
+    chi2_ppf,
+)
+from ..statistics.reliability import (
+    redundancy_numbers,
+    mdb_values,
+    external_reliability,
 )
 from .geometry import (
     wrap_pi,
@@ -49,80 +61,6 @@ from .geometry import (
 )
 from .indexing import build_parameter_index, validate_network_for_adjustment
 
-
-# ---------------------------
-# Statistical helpers
-# ---------------------------
-
-def _norm_ppf(p: float) -> float:
-    """Approximate inverse CDF of the standard normal distribution.
-
-    Uses Peter John Acklam's rational approximation.
-    Accuracy is more than sufficient for confidence bounds used here.
-    """
-    if p <= 0.0 or p >= 1.0:
-        raise ValueError("p must be in (0,1)")
-
-    # Coefficients from Acklam's approximation
-    a = [
-        -3.969683028665376e+01,
-        2.209460984245205e+02,
-        -2.759285104469687e+02,
-        1.383577518672690e+02,
-        -3.066479806614716e+01,
-        2.506628277459239e+00,
-    ]
-    b = [
-        -5.447609879822406e+01,
-        1.615858368580409e+02,
-        -1.556989798598866e+02,
-        6.680131188771972e+01,
-        -1.328068155288572e+01,
-    ]
-    c = [
-        -7.784894002430293e-03,
-        -3.223964580411365e-01,
-        -2.400758277161838e+00,
-        -2.549732539343734e+00,
-        4.374664141464968e+00,
-        2.938163982698783e+00,
-    ]
-    d = [
-        7.784695709041462e-03,
-        3.224671290700398e-01,
-        2.445134137142996e+00,
-        3.754408661907416e+00,
-    ]
-
-    plow = 0.02425
-    phigh = 1 - plow
-
-    if p < plow:
-        q = math.sqrt(-2 * math.log(p))
-        return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
-            ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1)
-        )
-    if p > phigh:
-        q = math.sqrt(-2 * math.log(1 - p))
-        return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / (
-            ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1)
-        )
-
-    q = p - 0.5
-    r = q * q
-    return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (
-        ((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1
-    )
-
-
-def _chi2_ppf(p: float, dof: int) -> float:
-    """Approximate inverse CDF for chi-square(dof) using Wilson–Hilferty."""
-    if dof <= 0:
-        raise ValueError("dof must be positive")
-    z = _norm_ppf(p)
-    k = float(dof)
-    t = 1 - 2.0 / (9.0 * k) + z * math.sqrt(2.0 / (9.0 * k))
-    return k * (t ** 3)
 
 
 def _network_span(points: Dict[str, Point]) -> float:
@@ -278,28 +216,55 @@ def adjust_network_2d(network: Network, options: AdjustmentOptions | None = None
             ellipse = _compute_error_ellipse(pid, cov2, options.confidence_level)
             error_ellipses[pid] = ellipse
 
-    # Standardized residuals & flagging
-    std_residuals = {}
+
+    # Standardized residuals, local test, and reliability measures
+    std_residuals: Dict[str, float] = {}
     residual_details: List[ResidualInfo] = []
     flagged: List[str] = []
 
-    if cov_matrix is not None and dof > 0:
-        # Qvv = P^{-1} - A Qxx A^T. Only need diagonal for standardization.
-        Qxx = cov_matrix / sigma0_sq_post
-        qvv_diag = []
-        for i in range(m):
-            ai = A_fin[i, :]
-            q = (sigmas_fin[i] ** 2) - float(ai @ Qxx @ ai.T)
-            qvv_diag.append(max(q, 1e-20))
-        qvv_diag = np.array(qvv_diag)
-        denom = np.sqrt(sigma0_sq_post * qvv_diag)
-        std_vals = residuals / denom
-    else:
-        # Fallback: normalize by sigma only
-        std_vals = residuals / (sigmas_fin * max(math.sqrt(sigma0_sq_post), 1e-12))
+    sigma0_hat = max(math.sqrt(sigma0_sq_post), 1e-12) if dof > 0 else 1.0
+    # For local outlier tests, use a priori sigma0 (data snooping convention)
+    sigma0_for_w = max(math.sqrt(options.a_priori_variance), 1e-12)
 
-    for obs, comp_val, res, std in zip(enabled_obs, computed_fin, residuals, std_vals):
+    qvv_diag = None
+    Qxx = None
+    if dof > 0:
+        # Need Qxx (cofactor of unknowns) for Qvv and reliability.
+        try:
+            N_fin = (A_fin.T * Pdiag) @ A_fin
+            Qxx = np.linalg.solve(N_fin, np.eye(n))
+        except np.linalg.LinAlgError:
+            Qxx = None
+
+    if Qxx is not None:
+        # diag(A Qxx A^T) efficiently
+        B = A_fin @ Qxx
+        diag_AQAt = (B * A_fin).sum(axis=1)
+        qvv_diag = (1.0 / Pdiag) - diag_AQAt
+        qvv_diag = np.maximum(qvv_diag, 1e-30)
+        std_vals = standardized_residuals(residuals, sigma0_for_w, qvv_diag)
+    else:
+        # Fallback: normalize by observation sigma only
+        std_vals = residuals / (sigmas_fin * max(sigma0_hat, 1e-12))
+
+    # Local test threshold
+    k_alpha = local_outlier_threshold(options.alpha_local)
+    k_beta = normal_ppf(options.mdb_power)
+
+    r_vals = None
+    mdb = None
+    ext_rel = None
+    if options.compute_reliability and Qxx is not None and qvv_diag is not None and dof > 0:
+        r_vals = redundancy_numbers(qvv_diag, Pdiag)
+        mdb = mdb_values(k_alpha, k_beta, sigma0_hat, sigmas_fin, r_vals)
+        coord_param_indices = list(index.coord_index.values())
+        ext_rel = external_reliability(Qxx, A_fin, Pdiag, mdb, coord_param_indices)
+
+    for j, (obs, comp_val, res, std) in enumerate(zip(enabled_obs, computed_fin, residuals, std_vals)):
         obs_type = obs.obs_type.value
+        is_candidate = abs(float(std)) > float(k_alpha)
+        is_flagged = abs(float(std)) > float(options.outlier_threshold)
+
         info = ResidualInfo(
             obs_id=obs.id,
             obs_type=obs_type,
@@ -307,7 +272,11 @@ def adjust_network_2d(network: Network, options: AdjustmentOptions | None = None
             computed=float(comp_val),
             residual=float(res),
             standardized_residual=float(std),
-            flagged=abs(float(std)) > options.outlier_threshold,
+            redundancy_number=float(r_vals[j]) if r_vals is not None else None,
+            mdb=float(mdb[j]) if mdb is not None else None,
+            external_reliability=float(ext_rel[j]) if ext_rel is not None else None,
+            is_outlier_candidate=is_candidate,
+            flagged=is_flagged,
         )
         if isinstance(obs, (DistanceObservation, DirectionObservation)):
             info.from_point = obs.from_point_id
@@ -319,25 +288,21 @@ def adjust_network_2d(network: Network, options: AdjustmentOptions | None = None
 
         std_residuals[obs.id] = float(std)
         residual_details.append(info)
-        if info.flagged:
+        if is_flagged:
             flagged.append(obs.id)
 
     # Chi-square global test
     chi_test = None
     if dof > 0:
-        alpha = options.alpha
-        lower = _chi2_ppf(alpha / 2.0, dof)
-        upper = _chi2_ppf(1 - alpha / 2.0, dof)
-        test_stat = vTPv / options.a_priori_variance
-        chi_test = ChiSquareTestResult(
-            test_statistic=test_stat,
-            critical_lower=lower,
-            critical_upper=upper,
-            confidence_level=options.confidence_level,
-            passed=(lower <= test_stat <= upper),
+        chi_test = chi_square_global_test(
+            vTPv=vTPv,
+            dof=dof,
+            alpha=options.alpha,
+            a_priori_variance=options.a_priori_variance,
         )
 
     result = AdjustmentResult(
+
         success=True,
         iterations=min(options.max_iterations, it if 'it' in locals() else 0),
         converged=converged,
@@ -450,7 +415,7 @@ def _compute_error_ellipse(point_id: str, cov2: 'np.ndarray', confidence: float)
     vecs = vecs[:, order]
 
     # Scale factor for the requested confidence for 2D
-    k2 = _chi2_ppf(confidence, 2)
+    k2 = chi2_ppf(confidence, 2)
     scale = math.sqrt(max(k2, 0.0))
 
     semi_major = math.sqrt(max(vals[0], 0.0)) * scale
