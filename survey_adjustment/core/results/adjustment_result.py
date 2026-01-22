@@ -289,6 +289,10 @@ class AdjustmentResult:
     robust_converged: bool = True
     robust_message: Optional[str] = None
 
+    # Constraint health / datum summary (Phase 7B)
+    datum_summary: Optional[Dict[str, Any]] = None  # ConstraintHealth.to_dict()
+    applied_auto_constraints: List[Dict[str, Any]] = field(default_factory=list)
+
     def __post_init__(self):
         """Set timestamp if not provided."""
         if self.timestamp is None:
@@ -383,6 +387,8 @@ class AdjustmentResult:
                 "robust_message": self.robust_message,
             },
             "global_test": self.chi_square_test.to_dict() if self.chi_square_test else None,
+            "datum_summary": self.datum_summary,
+            "applied_auto_constraints": self.applied_auto_constraints if self.applied_auto_constraints else None,
             "adjusted_points": [
                 {
                     "id": p.id,
@@ -506,6 +512,9 @@ class AdjustmentResult:
             robust_iterations=adjustment.get("robust_iterations", 0),
             robust_converged=adjustment.get("robust_converged", True),
             robust_message=adjustment.get("robust_message"),
+            # Constraint health (Phase 7B)
+            datum_summary=data.get("datum_summary"),
+            applied_auto_constraints=data.get("applied_auto_constraints", []),
         )
 
     @classmethod

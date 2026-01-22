@@ -48,6 +48,10 @@ from ..statistics.reliability import (
     mdb_values,
     external_reliability,
 )
+from ..validation import (
+    analyze_constraint_health,
+    apply_minimal_constraints,
+)
 
 
 def adjust_leveling_1d(
@@ -71,10 +75,24 @@ def adjust_leveling_1d(
 
     options = options or AdjustmentOptions.default()
 
+    # Analyze constraint health (Phase 7B)
+    constraint_health = analyze_constraint_health(network, adjustment_type="1d")
+    applied_constraints = []
+
+    # Apply auto-datum if enabled and network is not solvable
+    if options.auto_datum and not constraint_health.is_solvable:
+        applied_constraints = apply_minimal_constraints(network, adjustment_type="1d")
+        # Re-analyze after applying constraints
+        constraint_health = analyze_constraint_health(network, adjustment_type="1d")
+        constraint_health.applied_constraints = applied_constraints
+
     # Validate network for 1D adjustment
     errors = network.validate_1d()
     if errors:
-        return AdjustmentResult.failure("; ".join(errors))
+        result = AdjustmentResult.failure("; ".join(errors))
+        result.datum_summary = constraint_health.to_dict()
+        result.applied_auto_constraints = [c.to_dict() for c in applied_constraints]
+        return result
 
     # Get enabled leveling observations
     leveling_obs: List[HeightDifferenceObservation] = network.get_leveling_observations()
@@ -401,4 +419,7 @@ def adjust_leveling_1d(
         robust_iterations=robust_iterations,
         robust_converged=robust_converged,
         robust_message=robust_message,
+        # Constraint health (Phase 7B)
+        datum_summary=constraint_health.to_dict(),
+        applied_auto_constraints=[c.to_dict() for c in applied_constraints],
     )

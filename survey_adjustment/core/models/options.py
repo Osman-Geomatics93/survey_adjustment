@@ -76,6 +76,9 @@ class AdjustmentOptions:
     igg3_k0: float = 1.5
     igg3_k1: float = 3.0
 
+    # Auto-datum (Phase 7B) - applies minimal constraints automatically
+    auto_datum: bool = False
+
     def __post_init__(self):
         """Validate options after initialization."""
         if self.max_iterations < 1:
@@ -144,6 +147,8 @@ class AdjustmentOptions:
             "danish_c": self.danish_c,
             "igg3_k0": self.igg3_k0,
             "igg3_k1": self.igg3_k1,
+            # Auto-datum (Phase 7B)
+            "auto_datum": self.auto_datum,
         }
 
     @classmethod
@@ -184,6 +189,8 @@ class AdjustmentOptions:
             danish_c=data.get("danish_c", 2.0),
             igg3_k0=data.get("igg3_k0", 1.5),
             igg3_k1=data.get("igg3_k1", 3.0),
+            # Auto-datum (Phase 7B)
+            auto_datum=data.get("auto_datum", False),
         )
 
     @classmethod

@@ -96,6 +96,7 @@ class AdjustNetwork2DAlgorithm(QgsProcessingAlgorithm):
     COMPUTE_RELIABILITY = "COMPUTE_RELIABILITY"
     RESIDUAL_SCALE = "RESIDUAL_SCALE"
     ROBUST_METHOD = "ROBUST_METHOD"
+    AUTO_DATUM = "AUTO_DATUM"
 
     # Robust method options mapping
     ROBUST_OPTIONS = ["None (Standard LS)", "Huber", "Danish", "IGG-III"]
@@ -209,6 +210,11 @@ class AdjustNetwork2DAlgorithm(QgsProcessingAlgorithm):
             "Robust estimation method",
             options=self.ROBUST_OPTIONS,
             defaultValue=0,  # None (Standard LS)
+        ))
+        self.addParameter(QgsProcessingParameterBoolean(
+            self.AUTO_DATUM,
+            "Auto-apply minimal datum constraints",
+            defaultValue=False,
         ))
 
         # Report outputs
@@ -325,6 +331,7 @@ class AdjustNetwork2DAlgorithm(QgsProcessingAlgorithm):
         residual_scale = float(self.parameterAsDouble(parameters, self.RESIDUAL_SCALE, context))
         robust_idx = self.parameterAsEnum(parameters, self.ROBUST_METHOD, context)
         robust_method = self.ROBUST_VALUES[robust_idx]
+        auto_datum = self.parameterAsBool(parameters, self.AUTO_DATUM, context)
 
         out_json = self.parameterAsFileOutput(parameters, self.OUTPUT_JSON, context)
         out_html = self.parameterAsFileOutput(parameters, self.OUTPUT_HTML, context)
@@ -383,6 +390,7 @@ class AdjustNetwork2DAlgorithm(QgsProcessingAlgorithm):
             convergence_threshold=tol,
             compute_reliability=compute_reliability,
             robust_estimator=robust_enum,
+            auto_datum=auto_datum,
         )
 
         feedback.pushInfo("Running least-squares adjustment...")

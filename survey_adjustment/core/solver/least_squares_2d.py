@@ -69,6 +69,10 @@ from .robust import (
     compute_robust_weights,
     describe_method,
 )
+from ..validation import (
+    analyze_constraint_health,
+    apply_minimal_constraints,
+)
 
 
 
@@ -107,10 +111,25 @@ def adjust_network_2d(network: Network, options: AdjustmentOptions | None = None
 
     options = options or AdjustmentOptions.default()
 
+    # Analyze constraint health (Phase 7B)
+    constraint_health = analyze_constraint_health(network, adjustment_type="2d")
+    applied_constraints = []
+
+    # Apply auto-datum if enabled and network is not solvable
+    if options.auto_datum and not constraint_health.is_solvable:
+        applied_constraints = apply_minimal_constraints(network, adjustment_type="2d")
+        # Re-analyze after applying constraints
+        constraint_health = analyze_constraint_health(network, adjustment_type="2d")
+        constraint_health.applied_constraints = applied_constraints
+
     index = build_parameter_index(network, use_direction_orientations=True)
     errors = validate_network_for_adjustment(network, index)
     if errors:
-        return AdjustmentResult.failure("; ".join(errors))
+        # Include constraint health in failure result
+        result = AdjustmentResult.failure("; ".join(errors))
+        result.datum_summary = constraint_health.to_dict()
+        result.applied_auto_constraints = [c.to_dict() for c in applied_constraints]
+        return result
 
     enabled_obs: List[Observation] = list(network.get_enabled_observations())
     m = len(enabled_obs)
@@ -420,6 +439,9 @@ def adjust_network_2d(network: Network, options: AdjustmentOptions | None = None
         robust_iterations=robust_iterations,
         robust_converged=robust_converged,
         robust_message=robust_message,
+        # Constraint health (Phase 7B)
+        datum_summary=constraint_health.to_dict(),
+        applied_auto_constraints=[c.to_dict() for c in applied_constraints],
     )
 
     return result

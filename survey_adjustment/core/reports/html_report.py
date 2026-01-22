@@ -149,6 +149,88 @@ def render_html_report(result: AdjustmentResult, title: str | None = None) -> st
         meta_parts.append(f"Robust: {esc(result.robust_method.upper())}")
     parts.append(f"<div class='meta'>{' | '.join(meta_parts)}</div>")
 
+    # Constraint health summary (Phase 7B)
+    if result.datum_summary is not None:
+        ds = result.datum_summary
+        parts.append("<h2>Constraint Health Summary</h2>")
+        parts.append("<table><thead><tr><th>Category</th><th>Status</th><th>Details</th></tr></thead><tbody>")
+
+        # Helper to format status with color
+        def _status_class(status: str) -> str:
+            if status == "ok":
+                return "ok"
+            elif status == "warning":
+                return "bad"  # Use yellow/warning styling
+            else:
+                return "bad"
+
+        # Horizontal datum
+        h = ds.get("horizontal", {})
+        h_status = h.get("status", "unknown")
+        h_msg = h.get("message", "")
+        parts.append(f"<tr><td>Horizontal Datum</td><td class='{_status_class(h_status)}'>{esc(h_status.upper())}</td><td>{esc(h_msg)}</td></tr>")
+
+        # Orientation (if applicable)
+        o = ds.get("orientation", {})
+        o_status = o.get("status", "ok")
+        o_msg = o.get("message", "")
+        if o_msg:
+            parts.append(f"<tr><td>Orientation</td><td class='{_status_class(o_status)}'>{esc(o_status.upper())}</td><td>{esc(o_msg)}</td></tr>")
+
+        # Height datum (if required)
+        ht = ds.get("height", {})
+        ht_required = ht.get("required", False)
+        if ht_required:
+            ht_status = ht.get("status", "unknown")
+            ht_msg = ht.get("message", "")
+            parts.append(f"<tr><td>Height Datum</td><td class='{_status_class(ht_status)}'>{esc(ht_status.upper())}</td><td>{esc(ht_msg)}</td></tr>")
+
+        # Connectivity
+        conn = ds.get("connectivity", {})
+        conn_status = conn.get("status", "ok")
+        conn_msg = conn.get("message", "")
+        parts.append(f"<tr><td>Connectivity</td><td class='{_status_class(conn_status)}'>{esc(conn_status.upper())}</td><td>{esc(conn_msg)}</td></tr>")
+
+        # Degrees of freedom
+        dof_info = ds.get("degrees_of_freedom", {})
+        dof_status = dof_info.get("status", "ok")
+        dof_val = dof_info.get("value", 0)
+        dof_msg = dof_info.get("message", "")
+        num_obs = dof_info.get("num_observations", 0)
+        num_unk = dof_info.get("num_unknowns", 0)
+        dof_detail = f"{dof_msg} ({num_obs} obs, {num_unk} unknowns)"
+        parts.append(f"<tr><td>Degrees of Freedom</td><td class='{_status_class(dof_status)}'>{esc(dof_status.upper())} ({dof_val})</td><td>{esc(dof_detail)}</td></tr>")
+
+        parts.append("</tbody></table>")
+
+        # Show errors and warnings if any
+        errors = ds.get("errors", [])
+        warnings = ds.get("warnings", [])
+        if errors:
+            parts.append("<h3>Constraint Errors</h3><ul>")
+            for err in errors:
+                parts.append(f"<li class='bad'>{esc(err)}</li>")
+            parts.append("</ul>")
+        if warnings:
+            parts.append("<h3>Constraint Warnings</h3><ul>")
+            for warn in warnings:
+                parts.append(f"<li>{esc(warn)}</li>")
+            parts.append("</ul>")
+
+        # Show applied auto-constraints if any
+        applied = ds.get("applied_constraints", [])
+        if applied:
+            parts.append("<h3>Auto-Applied Constraints</h3>")
+            parts.append("<table><thead><tr><th>Point</th><th>Type</th><th>Value</th><th>Reason</th></tr></thead><tbody>")
+            for c in applied:
+                parts.append(
+                    f"<tr><td>{esc(c.get('point_id', ''))}</td>"
+                    f"<td>{esc(c.get('constraint_type', ''))}</td>"
+                    f"<td>{c.get('value', 0):.4f}</td>"
+                    f"<td>{esc(c.get('reason', ''))}</td></tr>"
+                )
+            parts.append("</tbody></table>")
+
     if result.chi_square_test is not None:
         c = result.chi_square_test
         parts.append("<h2>Chi-square Global Test</h2>")

@@ -92,6 +92,7 @@ class AdjustNetworkMixedAlgorithm(QgsProcessingAlgorithm):
     COMPUTE_RELIABILITY = "COMPUTE_RELIABILITY"
     MAX_ITERATIONS = "MAX_ITERATIONS"
     ROBUST_METHOD = "ROBUST_METHOD"
+    AUTO_DATUM = "AUTO_DATUM"
 
     # Robust method options mapping
     ROBUST_OPTIONS = ["None (Standard LS)", "Huber", "Danish", "IGG-III"]
@@ -194,6 +195,11 @@ class AdjustNetworkMixedAlgorithm(QgsProcessingAlgorithm):
             "Robust estimation method",
             options=self.ROBUST_OPTIONS,
             defaultValue=0,  # None (Standard LS)
+        ))
+        self.addParameter(QgsProcessingParameterBoolean(
+            self.AUTO_DATUM,
+            "Auto-apply minimal datum constraints",
+            defaultValue=False,
         ))
 
         # Report outputs
@@ -303,6 +309,7 @@ class AdjustNetworkMixedAlgorithm(QgsProcessingAlgorithm):
         max_iterations = self.parameterAsInt(parameters, self.MAX_ITERATIONS, context)
         robust_idx = self.parameterAsEnum(parameters, self.ROBUST_METHOD, context)
         robust_method = self.ROBUST_VALUES[robust_idx]
+        auto_datum = self.parameterAsBool(parameters, self.AUTO_DATUM, context)
 
         out_json = self.parameterAsFileOutput(parameters, self.OUTPUT_JSON, context)
         out_html = self.parameterAsFileOutput(parameters, self.OUTPUT_HTML, context)
@@ -374,6 +381,7 @@ class AdjustNetworkMixedAlgorithm(QgsProcessingAlgorithm):
             max_iterations=max_iterations,
             compute_reliability=compute_reliability,
             robust_estimator=robust_enum,
+            auto_datum=auto_datum,
         )
 
         # Run adjustment
