@@ -106,6 +106,8 @@ class Observation(ABC):
             return DirectionObservation.from_dict(data)
         elif obs_type == ObservationType.ANGLE.value or obs_type == "angle":
             return AngleObservation.from_dict(data)
+        elif obs_type == ObservationType.HEIGHT_DIFF.value or obs_type == "height_diff":
+            return HeightDifferenceObservation.from_dict(data)
         else:
             raise ValueError(f"Unknown observation type: {obs_type}")
 
@@ -364,6 +366,73 @@ class AngleObservation(Observation):
 
     def __repr__(self) -> str:
         return f"AngleObs({self.id}: {self.from_point_id}-{self.at_point_id}-{self.to_point_id}, {self.value_degrees:.4f}deg)"
+
+
+@dataclass
+class HeightDifferenceObservation(Observation):
+    """
+    Height difference (leveling) observation between two points.
+
+    The observed value (dh) is the height difference from the 'from' point
+    to the 'to' point: dh = H_to - H_from (positive if going uphill).
+
+    Residual convention: v = dh_observed - (H_to - H_from)
+
+    Attributes:
+        from_point_id: ID of the 'from' point (backsight in leveling)
+        to_point_id: ID of the 'to' point (foresight in leveling)
+    """
+
+    from_point_id: str = ""
+    to_point_id: str = ""
+
+    def __post_init__(self):
+        """Set observation type and validate."""
+        object.__setattr__(self, 'obs_type', ObservationType.HEIGHT_DIFF)
+        super().__post_init__()
+
+        if not self.from_point_id:
+            raise ValueError("from_point_id cannot be empty")
+        if not self.to_point_id:
+            raise ValueError("to_point_id cannot be empty")
+        if self.from_point_id == self.to_point_id:
+            raise ValueError("from_point_id and to_point_id cannot be the same")
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize height difference observation to dictionary."""
+        data = super().to_dict()
+        data.update({
+            "from_point_id": self.from_point_id,
+            "to_point_id": self.to_point_id,
+            "dh": self.value,  # Alias for clarity
+        })
+        return data
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'HeightDifferenceObservation':
+        """Create HeightDifferenceObservation from dictionary."""
+        # Accept 'dh' or 'value' for the height difference
+        dh = float(data.get("dh", data.get("value", data.get("height_diff", 0))))
+        sigma = float(data.get("sigma", data.get("sigma_dh", 0.001)))
+
+        return cls(
+            id=data.get("id", data.get("obs_id", "")),
+            obs_type=ObservationType.HEIGHT_DIFF,
+            value=dh,
+            sigma=sigma,
+            enabled=data.get("enabled", True),
+            from_point_id=str(data.get("from_point_id", data.get("from_id", data.get("from_point", "")))),
+            to_point_id=str(data.get("to_point_id", data.get("to_id", data.get("to_point", "")))),
+        )
+
+    @property
+    def dh(self) -> float:
+        """Alias for value: the observed height difference in meters."""
+        return self.value
+
+    def __repr__(self) -> str:
+        sign = "+" if self.value >= 0 else ""
+        return f"HeightDiffObs({self.id}: {self.from_point_id}->{self.to_point_id}, {sign}{self.value:.4f}m)"
 
 
 # Utility functions for angle conversions

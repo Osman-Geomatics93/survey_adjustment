@@ -1,0 +1,4 @@
+obs_id,from_point,to_point,dh,sigma
+L1,A,B,1.234,0.002
+L2,B,C,-0.456,0.002
+L3,A,C,0.780,0.003

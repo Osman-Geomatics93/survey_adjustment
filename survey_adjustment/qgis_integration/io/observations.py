@@ -28,6 +28,7 @@ from ...core.models.observation import (
     DistanceObservation,
     DirectionObservation,
     AngleObservation,
+    HeightDifferenceObservation,
 )
 from ...core.models.network import Network
 
@@ -223,6 +224,101 @@ def parse_angles_csv(
     return out
 
 
+def parse_leveling_csv(
+    path: str | Path,
+    sigma_unit: str = "m",
+    sigma_default: float = 0.001,
+) -> List[HeightDifferenceObservation]:
+    """Parse height difference (leveling) observations from CSV.
+
+    Expected columns:
+      - obs_id/id (optional)
+      - from_point/from/from_id/from_point_id
+      - to_point/to/to_id/to_point_id
+      - dh/value/height_diff - height difference in meters
+      - sigma/sigma_dh - standard deviation
+
+    Args:
+        path: Path to CSV file
+        sigma_unit: Unit for sigma values ("m" for meters, "mm" for millimeters)
+        sigma_default: Default sigma if not specified in CSV
+
+    Returns:
+        List of HeightDifferenceObservation objects
+    """
+    path = Path(path)
+    out: List[HeightDifferenceObservation] = []
+
+    # Sigma conversion factor
+    sigma_scale = 0.001 if sigma_unit.lower() == "mm" else 1.0
+
+    with path.open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            obs_id = _get(row, ["obs_id", "id"], default="").strip()
+            from_p = _get(row, ["from_point", "from", "from_id", "from_point_id"], default="").strip()
+            to_p = _get(row, ["to_point", "to", "to_id", "to_point_id"], default="").strip()
+            dh = float(_get(row, ["dh", "value", "height_diff", "delta_h"], default="0"))
+            sigma_raw = float(_get(row, ["sigma", "sigma_dh"], default=str(sigma_default / sigma_scale)))
+            sigma = sigma_raw * sigma_scale
+
+            out.append(
+                HeightDifferenceObservation(
+                    id=obs_id,
+                    obs_type=None,  # overwritten in __post_init__
+                    value=dh,
+                    sigma=sigma,
+                    from_point_id=from_p,
+                    to_point_id=to_p,
+                )
+            )
+    return out
+
+
+def parse_leveling_points_csv(path: str | Path) -> Dict[str, Point]:
+    """Parse points with heights from CSV for leveling networks.
+
+    Expected columns:
+      - id/point_id
+      - height/h/H
+      - fixed_height/fixed_h/fixed (optional, default False)
+      - name (optional)
+      - easting/x, northing/y (optional, for visualization)
+
+    Returns:
+        Dictionary mapping point_id to Point objects
+    """
+    path = Path(path)
+    points: Dict[str, Point] = {}
+
+    with path.open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            pid = _get(row, ["point_id", "id", "pid"]).strip()
+            if not pid:
+                raise ValueError(f"Missing point_id in {path}")
+
+            name = _get(row, ["name", "point_name"], default=pid).strip()
+            height = float(_get(row, ["height", "h", "H", "elevation"], default="0"))
+
+            # Coordinates are optional for leveling-only networks
+            e = float(_get(row, ["easting", "x", "E", "east"], default="0"))
+            n = float(_get(row, ["northing", "y", "N", "north"], default="0"))
+
+            fixed_h = _parse_bool(_get(row, ["fixed_height", "fixed_h", "fixed"], default=""), default=False)
+
+            points[pid] = Point(
+                id=pid,
+                name=name,
+                easting=e,
+                northing=n,
+                height=height,
+                fixed_height=fixed_h,
+            )
+
+    return points
+
+
 def parse_traverse_file(
     path: str | Path,
     angle_unit: str = "degrees",
@@ -233,10 +329,11 @@ def parse_traverse_file(
     """Parse a record-based traverse file.
 
     Line formats (comma-separated):
-      POINT,point_id,name,easting,northing,fixed_e,fixed_n,sigma_e,sigma_n
+      POINT,point_id,name,easting,northing,fixed_e,fixed_n,sigma_e,sigma_n[,height,fixed_h]
       DIST,obs_id,from_point,to_point,distance,sigma_distance
       DIR,obs_id,from_point,to_point,direction,sigma_direction,set_id
       ANGLE,obs_id,at_point,from_point,to_point,angle,sigma_angle
+      HDIFF,obs_id,from_point,to_point,dh,sigma_dh
 
     Lines starting with '#' or empty are ignored.
     """
@@ -265,14 +362,19 @@ def parse_traverse_file(
                 fixed_n = _parse_bool(parts[6] if len(parts) > 6 else False)
                 sigma_e = float(parts[7]) if len(parts) > 7 and parts[7] != "" else 0.0
                 sigma_n = float(parts[8]) if len(parts) > 8 and parts[8] != "" else 0.0
+                # Optional height fields
+                height = float(parts[9]) if len(parts) > 9 and parts[9] != "" else None
+                fixed_h = _parse_bool(parts[10] if len(parts) > 10 else False)
 
                 points[pid] = Point(
                     id=pid,
                     name=name,
                     easting=e,
                     northing=n,
+                    height=height,
                     fixed_easting=fixed_e,
                     fixed_northing=fixed_n,
+                    fixed_height=fixed_h,
                     sigma_easting=sigma_e,
                     sigma_northing=sigma_n,
                 )
@@ -324,6 +426,24 @@ def parse_traverse_file(
                         value=angle,
                         sigma=sigma,
                         at_point_id=at_p,
+                        from_point_id=frm,
+                        to_point_id=to,
+                    )
+                )
+
+            elif rec == "HDIFF":
+                # Height difference observation for leveling
+                if len(parts) < 6:
+                    raise ValueError(f"Invalid HDIFF record: {line}")
+                obs_id, frm, to = parts[1], parts[2], parts[3]
+                dh = float(parts[4])
+                sigma = float(parts[5])
+                observations.append(
+                    HeightDifferenceObservation(
+                        id=obs_id,
+                        obs_type=None,
+                        value=dh,
+                        sigma=sigma,
                         from_point_id=frm,
                         to_point_id=to,
                     )

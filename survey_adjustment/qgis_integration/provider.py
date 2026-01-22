@@ -28,6 +28,8 @@ class SurveyAdjustmentProvider(QgsProcessingProvider):
         # Lazy import algorithms so provider can load even if optional deps missing.
         from .algorithms.validate_network import ValidateNetworkAlgorithm
         from .algorithms.adjust_network_2d import AdjustNetwork2DAlgorithm
+        from .algorithms.adjust_leveling_1d import AdjustLeveling1DAlgorithm
 
         self.addAlgorithm(ValidateNetworkAlgorithm())
         self.addAlgorithm(AdjustNetwork2DAlgorithm())
+        self.addAlgorithm(AdjustLeveling1DAlgorithm())

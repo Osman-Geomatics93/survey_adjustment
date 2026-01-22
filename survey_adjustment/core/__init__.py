@@ -12,6 +12,7 @@ from .models import (
     DistanceObservation,
     DirectionObservation,
     AngleObservation,
+    HeightDifferenceObservation,
     Network,
     AdjustmentOptions
 )
@@ -23,7 +24,7 @@ from .results import (
     ResidualInfo
 )
 
-from .solver import adjust_network_2d
+from .solver import adjust_network_2d, adjust_leveling_1d
 
 from .geometry import (
     ellipse_polygon_points,
@@ -40,6 +41,7 @@ __all__ = [
     "DistanceObservation",
     "DirectionObservation",
     "AngleObservation",
+    "HeightDifferenceObservation",
     "Network",
     "AdjustmentOptions",
 
@@ -51,6 +53,7 @@ __all__ = [
 
     # Solvers
     "adjust_network_2d",
+    "adjust_leveling_1d",
 
     # Geometry
     "ellipse_polygon_points",

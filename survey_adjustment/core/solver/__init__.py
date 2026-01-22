@@ -4,7 +4,9 @@ Pure-Python least-squares solvers (no QGIS imports).
 """
 
 from .least_squares_2d import adjust_network_2d
+from .least_squares_1d import adjust_leveling_1d
 
 __all__ = [
     "adjust_network_2d",
+    "adjust_leveling_1d",
 ]

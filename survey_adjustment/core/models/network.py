@@ -22,7 +22,8 @@ from .observation import (
     ObservationType,
     DistanceObservation,
     DirectionObservation,
-    AngleObservation
+    AngleObservation,
+    HeightDifferenceObservation,
 )
 
 
@@ -225,6 +226,9 @@ class Network:
                 point_ids.add(obs.at_point_id)
                 point_ids.add(obs.from_point_id)
                 point_ids.add(obs.to_point_id)
+            elif isinstance(obs, HeightDifferenceObservation):
+                point_ids.add(obs.from_point_id)
+                point_ids.add(obs.to_point_id)
         return point_ids
 
     def validate(self) -> List[str]:
@@ -307,6 +311,9 @@ class Network:
                 adjacency[obs.at_point_id].add(obs.to_point_id)
                 adjacency[obs.from_point_id].add(obs.at_point_id)
                 adjacency[obs.to_point_id].add(obs.at_point_id)
+            elif isinstance(obs, HeightDifferenceObservation):
+                adjacency[obs.from_point_id].add(obs.to_point_id)
+                adjacency[obs.to_point_id].add(obs.from_point_id)
 
         # Get points that are in observations
         obs_point_ids = self.get_point_ids_from_observations()
@@ -373,6 +380,151 @@ class Network:
         num_obs = len(self.get_enabled_observations())
         num_unknowns = self._count_unknowns()
         return num_obs - num_unknowns
+
+    # 1D Leveling Network Methods
+
+    def get_height_fixed_points(self) -> List[Point]:
+        """
+        Get all points with fixed height (benchmarks).
+
+        Returns:
+            List of Point objects with fixed_height=True
+        """
+        return [p for p in self.points.values() if p.fixed_height]
+
+    def get_height_free_points(self) -> List[Point]:
+        """
+        Get all points with adjustable height.
+
+        Returns:
+            List of Point objects with fixed_height=False
+        """
+        return [p for p in self.points.values() if not p.fixed_height]
+
+    def get_leveling_observations(self) -> List[HeightDifferenceObservation]:
+        """
+        Get all height difference observations.
+
+        Returns:
+            List of HeightDifferenceObservation objects
+        """
+        return [
+            obs for obs in self.observations
+            if isinstance(obs, HeightDifferenceObservation) and obs.enabled
+        ]
+
+    def _count_leveling_unknowns(self) -> int:
+        """
+        Count the number of height unknowns for 1D adjustment.
+
+        Returns:
+            Number of unknown heights (non-fixed points in leveling network)
+        """
+        # Only count heights of points that are part of leveling observations
+        leveling_point_ids: Set[str] = set()
+        for obs in self.get_leveling_observations():
+            leveling_point_ids.add(obs.from_point_id)
+            leveling_point_ids.add(obs.to_point_id)
+
+        unknowns = 0
+        for point_id in leveling_point_ids:
+            if point_id in self.points:
+                point = self.points[point_id]
+                if not point.fixed_height:
+                    unknowns += 1
+        return unknowns
+
+    def get_leveling_degrees_of_freedom(self) -> int:
+        """
+        Calculate degrees of freedom for 1D leveling adjustment.
+
+        DOF = number of ΔH observations - number of unknown heights
+
+        Returns:
+            Degrees of freedom for leveling network
+        """
+        num_obs = len(self.get_leveling_observations())
+        num_unknowns = self._count_leveling_unknowns()
+        return num_obs - num_unknowns
+
+    def validate_1d(self) -> List[str]:
+        """
+        Validate the network for 1D leveling adjustment.
+
+        Checks for:
+        - At least one height difference observation
+        - Referenced points exist
+        - At least one fixed height (datum)
+        - Network connectivity via ΔH observations
+        - Sufficient observations for adjustment
+
+        Returns:
+            List of error messages (empty if valid)
+        """
+        errors: List[str] = []
+
+        leveling_obs = self.get_leveling_observations()
+        if not leveling_obs:
+            errors.append("Network has no height difference observations")
+            return errors
+
+        # Check for missing points in observations
+        for obs in leveling_obs:
+            if obs.from_point_id not in self.points:
+                errors.append(f"Observation references missing point: '{obs.from_point_id}'")
+            if obs.to_point_id not in self.points:
+                errors.append(f"Observation references missing point: '{obs.to_point_id}'")
+
+        if errors:
+            return errors  # Can't continue if points are missing
+
+        # Check for at least one fixed height
+        fixed_height_points = self.get_height_fixed_points()
+        # Only consider fixed heights for points in the leveling network
+        leveling_point_ids: Set[str] = set()
+        for obs in leveling_obs:
+            leveling_point_ids.add(obs.from_point_id)
+            leveling_point_ids.add(obs.to_point_id)
+
+        fixed_in_network = [p for p in fixed_height_points if p.id in leveling_point_ids]
+        if not fixed_in_network:
+            errors.append("Network has no fixed height points (datum definition required)")
+
+        # Check connectivity via height difference observations
+        adjacency: Dict[str, Set[str]] = defaultdict(set)
+        for obs in leveling_obs:
+            adjacency[obs.from_point_id].add(obs.to_point_id)
+            adjacency[obs.to_point_id].add(obs.from_point_id)
+
+        if leveling_point_ids:
+            visited: Set[str] = set()
+            start_point = next(iter(leveling_point_ids))
+            queue = [start_point]
+            visited.add(start_point)
+
+            while queue:
+                current = queue.pop(0)
+                for neighbor in adjacency.get(current, set()):
+                    if neighbor not in visited:
+                        visited.add(neighbor)
+                        queue.append(neighbor)
+
+            unvisited = leveling_point_ids - visited
+            if unvisited:
+                errors.append(
+                    f"Leveling network is disconnected. Unreachable points: {', '.join(sorted(unvisited))}"
+                )
+
+        # Check for sufficient observations
+        num_unknowns = self._count_leveling_unknowns()
+        num_obs = len(leveling_obs)
+        if num_obs < num_unknowns:
+            errors.append(
+                f"Insufficient observations: {num_obs} observations "
+                f"for {num_unknowns} unknowns (need at least {num_unknowns})"
+            )
+
+        return errors
 
     def summary(self) -> Dict[str, Any]:
         """

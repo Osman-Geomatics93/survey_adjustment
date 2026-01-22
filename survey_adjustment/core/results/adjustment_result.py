@@ -386,10 +386,13 @@ class AdjustmentResult:
                     "name": p.name,
                     "easting": p.easting,
                     "northing": p.northing,
+                    "height": p.height,
                     "fixed_easting": p.fixed_easting,
                     "fixed_northing": p.fixed_northing,
+                    "fixed_height": p.fixed_height,
                     "sigma_easting": p.sigma_easting,
-                    "sigma_northing": p.sigma_northing
+                    "sigma_northing": p.sigma_northing,
+                    "sigma_height": p.sigma_height,
                 }
                 for p in self.adjusted_points.values()
             ],
