@@ -1,0 +1,38 @@
+[general]
+name=Survey Adjustment & Network Analysis
+qgisMinimumVersion=3.22
+description=Least-squares adjustment for survey networks (2D, 1D leveling, 3D GNSS, mixed) with robust estimation, statistics, and reliability analysis.
+version=1.0.1
+author=Osman Ibrahim
+email=422436@ogr.ktu.edu.tr
+
+about=Production-ready least-squares adjustment plugin for professional surveying workflows.
+
+    Features:
+    - 2D Classical Adjustment (distances, directions, angles)
+    - 1D Leveling Adjustment (height differences)
+    - 3D GNSS Baseline Adjustment (with full covariance)
+    - Mixed Adjustment (classical + GNSS + leveling combined)
+    - Robust Estimation via IRLS (Huber, Danish, IGG-III)
+    - Constraint Health Analysis with actionable messages
+    - Optional Auto-Datum for quick exploration
+    - Chi-square global test, redundancy numbers, MDB, external reliability
+    - Error ellipses with confidence scaling
+    - JSON + HTML reports
+    - GeoPackage output with adjusted points, ellipses, residual vectors
+
+tracker=https://github.com/Osman-Geomatics93/survey_adjustment/issues
+repository=https://github.com/Osman-Geomatics93/survey_adjustment
+homepage=https://github.com/Osman-Geomatics93/survey_adjustment
+
+tags=surveying, adjustment, least squares, network analysis, GNSS, leveling, geodesy, statistics
+
+category=Analysis
+icon=icon.png
+hasProcessingProvider=yes
+
+[experimental]
+experimental=false
+
+[deprecated]
+deprecated=false
