@@ -1,0 +1,5 @@
+point_id,name,E,N,H,fixed_e,fixed_n,fixed_h
+BASE,Base Station,500000.000,4000000.000,100.000,true,true,true
+P1,Point 1,500100.000,4000050.000,105.000,false,false,false
+P2,Point 2,500200.000,4000100.000,110.000,false,false,false
+P3,Point 3,500150.000,4000200.000,108.000,false,false,false

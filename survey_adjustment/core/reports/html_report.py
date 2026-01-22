@@ -24,15 +24,32 @@ def _is_leveling_result(result: AdjustmentResult) -> bool:
     return True
 
 
+def _is_gnss_result(result: AdjustmentResult) -> bool:
+    """Detect if this is a 3D GNSS baseline adjustment based on observation types."""
+    if not result.residual_details:
+        return False
+    # Check if all observations are gnss_baseline type
+    for r in result.residual_details:
+        if r.obs_type != "gnss_baseline":
+            return False
+    return True
+
+
 def render_html_report(result: AdjustmentResult, title: str | None = None) -> str:
     """Render an :class:`AdjustmentResult` as a standalone HTML document.
 
-    Automatically detects leveling (1D) vs 2D adjustments and formats accordingly.
+    Automatically detects leveling (1D), GNSS (3D), or 2D adjustments and formats accordingly.
     """
     is_leveling = _is_leveling_result(result)
+    is_gnss = _is_gnss_result(result)
 
     if title is None:
-        title = "Leveling Adjustment Report" if is_leveling else "Survey Adjustment Report"
+        if is_leveling:
+            title = "Leveling Adjustment Report"
+        elif is_gnss:
+            title = "GNSS Baseline Adjustment Report"
+        else:
+            title = "Survey Adjustment Report"
 
     def esc(s: object) -> str:
         return html.escape(str(s))
@@ -97,6 +114,23 @@ def render_html_report(result: AdjustmentResult, title: str | None = None) -> st
                 "</tr>"
             )
         parts.append("</tbody></table>")
+    elif is_gnss:
+        # 3D GNSS adjustment: show E, N, H with all sigmas
+        parts.append("<table><thead><tr><th>ID</th><th>Name</th><th>E</th><th>N</th><th>H</th><th>σE</th><th>σN</th><th>σH</th></tr></thead><tbody>")
+        for pid in sorted(result.adjusted_points.keys()):
+            p = result.adjusted_points[pid]
+            h_val = f"{p.height:.4f}" if p.height is not None else "-"
+            se_val = f"{p.sigma_easting:.4f}" if p.sigma_easting is not None else "-"
+            sn_val = f"{p.sigma_northing:.4f}" if p.sigma_northing is not None else "-"
+            sh_val = f"{p.sigma_height:.4f}" if p.sigma_height is not None else "-"
+            parts.append(
+                "<tr>"
+                f"<td>{esc(p.id)}</td><td>{esc(p.name)}</td>"
+                f"<td>{p.easting:.4f}</td><td>{p.northing:.4f}</td><td>{h_val}</td>"
+                f"<td>{se_val}</td><td>{sn_val}</td><td>{sh_val}</td>"
+                "</tr>"
+            )
+        parts.append("</tbody></table>")
     else:
         # 2D adjustment: show E, N coordinates
         parts.append("<table><thead><tr><th>ID</th><th>Name</th><th>E</th><th>N</th><th>σE</th><th>σN</th></tr></thead><tbody>")
@@ -151,6 +185,30 @@ def render_html_report(result: AdjustmentResult, title: str | None = None) -> st
                 f"<td>{r.observed:.4f}</td><td>{r.computed:.4f}</td>"
                 f"<td>{v_mm:.2f}</td><td>{r.standardized_residual:.3f}</td>"
                 f"<td>{r_val}</td><td>{mdb_val}</td><td>{ext_val}</td>"
+                f"<td>{'⚑' if (r.flagged or r.is_outlier_candidate) else ''}</td>"
+                "</tr>"
+            )
+        parts.append("</tbody></table>")
+    elif is_gnss:
+        # GNSS baseline residuals with from/to and 3D residual
+        parts.append(
+            "<table><thead><tr>"
+            "<th>ID</th><th>From</th><th>To</th><th>Length (m)</th><th>|v| (mm)</th><th>w_max</th>"
+            "<th>r</th><th>Flag</th>"
+            "</tr></thead><tbody>"
+        )
+        for r in result.residual_details:
+            cls = "flag" if (r.flagged or r.is_outlier_candidate) else ""
+            v_mm = r.residual * 1000 if r.residual is not None else None
+            r_val = f"{r.redundancy_number:.3f}" if r.redundancy_number is not None else "-"
+            w_val = f"{r.standardized_residual:.3f}" if r.standardized_residual is not None else "-"
+            parts.append(
+                f"<tr class='{cls}'>"
+                f"<td>{esc(r.obs_id)}</td>"
+                f"<td>{esc(r.from_point or '')}</td><td>{esc(r.to_point or '')}</td>"
+                f"<td>{r.observed:.3f}</td>"
+                f"<td>{v_mm:.2f}</td><td>{w_val}</td>"
+                f"<td>{r_val}</td>"
                 f"<td>{'⚑' if (r.flagged or r.is_outlier_candidate) else ''}</td>"
                 "</tr>"
             )

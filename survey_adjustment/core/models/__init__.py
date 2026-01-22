@@ -16,6 +16,7 @@ from .observation import (
     DirectionObservation,
     AngleObservation,
     HeightDifferenceObservation,
+    GnssBaselineObservation,
     degrees_to_radians,
     radians_to_degrees,
     arcseconds_to_radians,
@@ -37,6 +38,7 @@ __all__ = [
     "DirectionObservation",
     "AngleObservation",
     "HeightDifferenceObservation",
+    "GnssBaselineObservation",
 
     # Network
     "Network",

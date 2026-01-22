@@ -108,6 +108,8 @@ class Observation(ABC):
             return AngleObservation.from_dict(data)
         elif obs_type == ObservationType.HEIGHT_DIFF.value or obs_type == "height_diff":
             return HeightDifferenceObservation.from_dict(data)
+        elif obs_type == ObservationType.GNSS_BASELINE.value or obs_type == "gnss_baseline":
+            return GnssBaselineObservation.from_dict(data)
         else:
             raise ValueError(f"Unknown observation type: {obs_type}")
 
@@ -433,6 +435,229 @@ class HeightDifferenceObservation(Observation):
     def __repr__(self) -> str:
         sign = "+" if self.value >= 0 else ""
         return f"HeightDiffObs({self.id}: {self.from_point_id}->{self.to_point_id}, {sign}{self.value:.4f}m)"
+
+
+@dataclass
+class GnssBaselineObservation(Observation):
+    """
+    GNSS baseline observation between two points (3D vector).
+
+    A baseline represents the vector difference (dE, dN, dH) from the 'from' point
+    to the 'to' point in a local coordinate system (Easting, Northing, Height).
+
+    The observation includes a 3x3 covariance matrix for the baseline components.
+    Covariance can be specified as:
+    - Full covariance terms: cov_EE, cov_EN, cov_EH, cov_NN, cov_NH, cov_HH
+    - Or sigmas + correlations: sigma_E, sigma_N, sigma_H, rho_EN, rho_EH, rho_NH
+
+    Residual convention: v = observed - computed
+    where computed = (E_to - E_from, N_to - N_from, H_to - H_from)
+
+    Attributes:
+        from_point_id: ID of the reference point (base station)
+        to_point_id: ID of the target point (rover)
+        dE: Observed easting difference (meters)
+        dN: Observed northing difference (meters)
+        dH: Observed height difference (meters)
+        cov_EE, cov_EN, cov_EH, cov_NN, cov_NH, cov_HH: Covariance matrix terms (m²)
+    """
+
+    from_point_id: str = ""
+    to_point_id: str = ""
+
+    # Baseline components
+    dE: float = 0.0
+    dN: float = 0.0
+    dH: float = 0.0
+
+    # Covariance matrix (symmetric 3x3, stored as upper triangle)
+    # [cov_EE  cov_EN  cov_EH]
+    # [cov_EN  cov_NN  cov_NH]
+    # [cov_EH  cov_NH  cov_HH]
+    cov_EE: float = 0.0001  # Default 1cm sigma
+    cov_EN: float = 0.0
+    cov_EH: float = 0.0
+    cov_NN: float = 0.0001
+    cov_NH: float = 0.0
+    cov_HH: float = 0.0001
+
+    def __post_init__(self):
+        """Set observation type and validate."""
+        object.__setattr__(self, 'obs_type', ObservationType.GNSS_BASELINE)
+        # Set placeholder value/sigma for base class compatibility
+        # The actual values are in dE, dN, dH and covariance matrix
+        object.__setattr__(self, 'value', 0.0)
+        object.__setattr__(self, 'sigma', 1.0)
+
+        # Call parent validation (but skip sigma check since we use covariance)
+        if not self.id:
+            object.__setattr__(self, 'id', _generate_obs_id())
+
+        if not self.from_point_id:
+            raise ValueError("from_point_id cannot be empty")
+        if not self.to_point_id:
+            raise ValueError("to_point_id cannot be empty")
+        if self.from_point_id == self.to_point_id:
+            raise ValueError("from_point_id and to_point_id cannot be the same")
+
+        # Validate covariance (diagonal must be positive)
+        if self.cov_EE <= 0 or self.cov_NN <= 0 or self.cov_HH <= 0:
+            raise ValueError("Covariance diagonal elements must be positive")
+
+    @property
+    def covariance_matrix(self) -> List[List[float]]:
+        """Return the 3x3 covariance matrix as a nested list."""
+        return [
+            [self.cov_EE, self.cov_EN, self.cov_EH],
+            [self.cov_EN, self.cov_NN, self.cov_NH],
+            [self.cov_EH, self.cov_NH, self.cov_HH],
+        ]
+
+    @property
+    def sigma_E(self) -> float:
+        """Standard deviation of dE component."""
+        return math.sqrt(self.cov_EE)
+
+    @property
+    def sigma_N(self) -> float:
+        """Standard deviation of dN component."""
+        return math.sqrt(self.cov_NN)
+
+    @property
+    def sigma_H(self) -> float:
+        """Standard deviation of dH component."""
+        return math.sqrt(self.cov_HH)
+
+    @property
+    def baseline_length(self) -> float:
+        """3D length of the baseline vector."""
+        return math.sqrt(self.dE**2 + self.dN**2 + self.dH**2)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Serialize GNSS baseline observation to dictionary."""
+        return {
+            "id": self.id,
+            "obs_type": self.obs_type.value,
+            "enabled": self.enabled,
+            "from_point_id": self.from_point_id,
+            "to_point_id": self.to_point_id,
+            "dE": self.dE,
+            "dN": self.dN,
+            "dH": self.dH,
+            "cov_EE": self.cov_EE,
+            "cov_EN": self.cov_EN,
+            "cov_EH": self.cov_EH,
+            "cov_NN": self.cov_NN,
+            "cov_NH": self.cov_NH,
+            "cov_HH": self.cov_HH,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'GnssBaselineObservation':
+        """Create GnssBaselineObservation from dictionary."""
+        # Handle both covariance formats
+        if "cov_EE" in data:
+            # Full covariance format
+            cov_EE = float(data.get("cov_EE", 0.0001))
+            cov_EN = float(data.get("cov_EN", 0.0))
+            cov_EH = float(data.get("cov_EH", 0.0))
+            cov_NN = float(data.get("cov_NN", 0.0001))
+            cov_NH = float(data.get("cov_NH", 0.0))
+            cov_HH = float(data.get("cov_HH", 0.0001))
+        elif "sigma_E" in data:
+            # Sigmas + correlations format
+            sigma_E = float(data.get("sigma_E", 0.01))
+            sigma_N = float(data.get("sigma_N", 0.01))
+            sigma_H = float(data.get("sigma_H", 0.01))
+            rho_EN = float(data.get("rho_EN", 0.0))
+            rho_EH = float(data.get("rho_EH", 0.0))
+            rho_NH = float(data.get("rho_NH", 0.0))
+
+            # Convert to covariance: cov_ij = rho_ij * sigma_i * sigma_j
+            cov_EE = sigma_E ** 2
+            cov_NN = sigma_N ** 2
+            cov_HH = sigma_H ** 2
+            cov_EN = rho_EN * sigma_E * sigma_N
+            cov_EH = rho_EH * sigma_E * sigma_H
+            cov_NH = rho_NH * sigma_N * sigma_H
+        else:
+            # Default covariance (10mm sigma, uncorrelated)
+            default_var = 0.0001  # (0.01m)^2
+            cov_EE = cov_NN = cov_HH = default_var
+            cov_EN = cov_EH = cov_NH = 0.0
+
+        return cls(
+            id=data.get("id", data.get("obs_id", "")),
+            obs_type=ObservationType.GNSS_BASELINE,
+            value=0.0,  # Placeholder
+            sigma=1.0,  # Placeholder
+            enabled=data.get("enabled", True),
+            from_point_id=str(data.get("from_point_id", data.get("from_id", data.get("from", "")))),
+            to_point_id=str(data.get("to_point_id", data.get("to_id", data.get("to", "")))),
+            dE=float(data.get("dE", data.get("delta_E", 0.0))),
+            dN=float(data.get("dN", data.get("delta_N", 0.0))),
+            dH=float(data.get("dH", data.get("delta_H", 0.0))),
+            cov_EE=cov_EE,
+            cov_EN=cov_EN,
+            cov_EH=cov_EH,
+            cov_NN=cov_NN,
+            cov_NH=cov_NH,
+            cov_HH=cov_HH,
+        )
+
+    @classmethod
+    def from_sigmas_correlations(
+        cls,
+        from_point_id: str,
+        to_point_id: str,
+        dE: float,
+        dN: float,
+        dH: float,
+        sigma_E: float,
+        sigma_N: float,
+        sigma_H: float,
+        rho_EN: float = 0.0,
+        rho_EH: float = 0.0,
+        rho_NH: float = 0.0,
+        obs_id: str = "",
+        enabled: bool = True,
+    ) -> 'GnssBaselineObservation':
+        """
+        Create observation from sigmas and correlations.
+
+        Args:
+            from_point_id: Reference point ID
+            to_point_id: Target point ID
+            dE, dN, dH: Baseline components (meters)
+            sigma_E, sigma_N, sigma_H: Standard deviations (meters)
+            rho_EN, rho_EH, rho_NH: Correlation coefficients (-1 to 1)
+            obs_id: Optional observation ID
+            enabled: Whether observation is enabled
+        """
+        return cls(
+            id=obs_id,
+            obs_type=ObservationType.GNSS_BASELINE,
+            value=0.0,
+            sigma=1.0,
+            enabled=enabled,
+            from_point_id=from_point_id,
+            to_point_id=to_point_id,
+            dE=dE,
+            dN=dN,
+            dH=dH,
+            cov_EE=sigma_E ** 2,
+            cov_EN=rho_EN * sigma_E * sigma_N,
+            cov_EH=rho_EH * sigma_E * sigma_H,
+            cov_NN=sigma_N ** 2,
+            cov_NH=rho_NH * sigma_N * sigma_H,
+            cov_HH=sigma_H ** 2,
+        )
+
+    def __repr__(self) -> str:
+        return (
+            f"GnssBaselineObs({self.id}: {self.from_point_id}->{self.to_point_id}, "
+            f"dE={self.dE:.3f}, dN={self.dN:.3f}, dH={self.dH:.3f}m)"
+        )
 
 
 # Utility functions for angle conversions

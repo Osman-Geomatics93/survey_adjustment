@@ -29,6 +29,7 @@ from ...core.models.observation import (
     DirectionObservation,
     AngleObservation,
     HeightDifferenceObservation,
+    GnssBaselineObservation,
 )
 from ...core.models.network import Network
 
@@ -456,3 +457,144 @@ def parse_traverse_file(
     for obs in observations:
         net.add_observation(obs)
     return net
+
+
+def parse_gnss_baselines_csv(
+    path: str | Path,
+    covariance_format: str = "full",
+) -> List[GnssBaselineObservation]:
+    """Parse GNSS baseline observations from CSV.
+
+    Expected columns for 'full' covariance format:
+      - obs_id/id (optional)
+      - from_point/from/from_id/from_point_id
+      - to_point/to/to_id/to_point_id
+      - dE/delta_E - Easting component (meters)
+      - dN/delta_N - Northing component (meters)
+      - dH/delta_H - Height component (meters)
+      - cov_EE, cov_EN, cov_EH, cov_NN, cov_NH, cov_HH - covariance terms (m²)
+
+    Expected columns for 'sigmas_corr' format:
+      - obs_id/id (optional)
+      - from_point/from/from_id/from_point_id
+      - to_point/to/to_id/to_point_id
+      - dE, dN, dH - baseline components (meters)
+      - sigma_E, sigma_N, sigma_H - standard deviations (meters)
+      - rho_EN, rho_EH, rho_NH - correlation coefficients (optional, default 0)
+
+    Args:
+        path: Path to CSV file
+        covariance_format: "full" for covariance terms, "sigmas_corr" for sigmas + correlations
+
+    Returns:
+        List of GnssBaselineObservation objects
+    """
+    path = Path(path)
+    out: List[GnssBaselineObservation] = []
+
+    with path.open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            obs_id = _get(row, ["obs_id", "id"], default="").strip()
+            from_p = _get(row, ["from_point", "from", "from_id", "from_point_id"], default="").strip()
+            to_p = _get(row, ["to_point", "to", "to_id", "to_point_id"], default="").strip()
+
+            dE = float(_get(row, ["dE", "delta_E", "de"], default="0"))
+            dN = float(_get(row, ["dN", "delta_N", "dn"], default="0"))
+            dH = float(_get(row, ["dH", "delta_H", "dh"], default="0"))
+
+            if covariance_format == "sigmas_corr":
+                # Parse sigmas and correlations
+                sigma_E = float(_get(row, ["sigma_E", "sE", "se"], default="0.01"))
+                sigma_N = float(_get(row, ["sigma_N", "sN", "sn"], default="0.01"))
+                sigma_H = float(_get(row, ["sigma_H", "sH", "sh"], default="0.01"))
+                rho_EN = float(_get(row, ["rho_EN", "corr_EN"], default="0"))
+                rho_EH = float(_get(row, ["rho_EH", "corr_EH"], default="0"))
+                rho_NH = float(_get(row, ["rho_NH", "corr_NH"], default="0"))
+
+                # Convert to covariance
+                cov_EE = sigma_E ** 2
+                cov_NN = sigma_N ** 2
+                cov_HH = sigma_H ** 2
+                cov_EN = rho_EN * sigma_E * sigma_N
+                cov_EH = rho_EH * sigma_E * sigma_H
+                cov_NH = rho_NH * sigma_N * sigma_H
+            else:
+                # Full covariance format
+                cov_EE = float(_get(row, ["cov_EE", "var_E"], default="0.0001"))
+                cov_EN = float(_get(row, ["cov_EN"], default="0"))
+                cov_EH = float(_get(row, ["cov_EH"], default="0"))
+                cov_NN = float(_get(row, ["cov_NN", "var_N"], default="0.0001"))
+                cov_NH = float(_get(row, ["cov_NH"], default="0"))
+                cov_HH = float(_get(row, ["cov_HH", "var_H"], default="0.0001"))
+
+            out.append(
+                GnssBaselineObservation(
+                    id=obs_id,
+                    obs_type=None,
+                    value=0.0,  # Placeholder
+                    sigma=1.0,  # Placeholder
+                    from_point_id=from_p,
+                    to_point_id=to_p,
+                    dE=dE,
+                    dN=dN,
+                    dH=dH,
+                    cov_EE=cov_EE,
+                    cov_EN=cov_EN,
+                    cov_EH=cov_EH,
+                    cov_NN=cov_NN,
+                    cov_NH=cov_NH,
+                    cov_HH=cov_HH,
+                )
+            )
+
+    return out
+
+
+def parse_gnss_points_csv(path: str | Path) -> Dict[str, Point]:
+    """Parse points with 3D coordinates from CSV for GNSS networks.
+
+    Expected columns:
+      - id/point_id
+      - easting/x/E
+      - northing/y/N
+      - height/h/H
+      - fixed_e/fixed_easting (optional)
+      - fixed_n/fixed_northing (optional)
+      - fixed_h/fixed_height (optional)
+      - name (optional)
+
+    Returns:
+        Dictionary mapping point_id to Point objects
+    """
+    path = Path(path)
+    points: Dict[str, Point] = {}
+
+    with path.open(newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            pid = _get(row, ["point_id", "id", "pid"]).strip()
+            if not pid:
+                raise ValueError(f"Missing point_id in {path}")
+
+            name = _get(row, ["name", "point_name"], default=pid).strip()
+            e = float(_get(row, ["easting", "x", "E", "east"], default="0"))
+            n = float(_get(row, ["northing", "y", "N", "north"], default="0"))
+            h = float(_get(row, ["height", "h", "H", "elevation"], default="0"))
+
+            fixed_e = _parse_bool(_get(row, ["fixed_e", "fixed_easting", "fixed_x"], default=""), default=False)
+            fixed_n = _parse_bool(_get(row, ["fixed_n", "fixed_northing", "fixed_y"], default=""), default=False)
+            fixed_h = _parse_bool(_get(row, ["fixed_h", "fixed_height", "fixed"], default=""), default=False)
+
+            points[pid] = Point(
+                id=pid,
+                name=name,
+                easting=e,
+                northing=n,
+                height=h,
+                fixed_easting=fixed_e,
+                fixed_northing=fixed_n,
+                fixed_height=fixed_h,
+            )
+
+    return points

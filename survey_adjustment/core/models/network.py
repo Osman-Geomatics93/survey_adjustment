@@ -24,6 +24,7 @@ from .observation import (
     DirectionObservation,
     AngleObservation,
     HeightDifferenceObservation,
+    GnssBaselineObservation,
 )
 
 
@@ -229,6 +230,9 @@ class Network:
             elif isinstance(obs, HeightDifferenceObservation):
                 point_ids.add(obs.from_point_id)
                 point_ids.add(obs.to_point_id)
+            elif isinstance(obs, GnssBaselineObservation):
+                point_ids.add(obs.from_point_id)
+                point_ids.add(obs.to_point_id)
         return point_ids
 
     def validate(self) -> List[str]:
@@ -312,6 +316,9 @@ class Network:
                 adjacency[obs.from_point_id].add(obs.at_point_id)
                 adjacency[obs.to_point_id].add(obs.at_point_id)
             elif isinstance(obs, HeightDifferenceObservation):
+                adjacency[obs.from_point_id].add(obs.to_point_id)
+                adjacency[obs.to_point_id].add(obs.from_point_id)
+            elif isinstance(obs, GnssBaselineObservation):
                 adjacency[obs.from_point_id].add(obs.to_point_id)
                 adjacency[obs.to_point_id].add(obs.from_point_id)
 
@@ -521,6 +528,168 @@ class Network:
         if num_obs < num_unknowns:
             errors.append(
                 f"Insufficient observations: {num_obs} observations "
+                f"for {num_unknowns} unknowns (need at least {num_unknowns})"
+            )
+
+        return errors
+
+    # 3D GNSS Network Methods
+
+    def get_gnss_baseline_observations(self) -> List[GnssBaselineObservation]:
+        """
+        Get all GNSS baseline observations.
+
+        Returns:
+            List of GnssBaselineObservation objects
+        """
+        return [
+            obs for obs in self.observations
+            if isinstance(obs, GnssBaselineObservation) and obs.enabled
+        ]
+
+    def get_3d_fixed_points(self) -> List[Point]:
+        """
+        Get all points with all three coordinates fixed (E, N, H).
+
+        Returns:
+            List of Point objects with all coordinates fixed
+        """
+        return [
+            p for p in self.points.values()
+            if p.fixed_easting and p.fixed_northing and p.fixed_height
+        ]
+
+    def _count_3d_unknowns(self) -> int:
+        """
+        Count the number of 3D coordinate unknowns.
+
+        For GNSS adjustment, unknowns are E, N, H of non-fixed points.
+
+        Returns:
+            Number of unknown coordinate components
+        """
+        # Get points that are part of GNSS baseline observations
+        gnss_point_ids: Set[str] = set()
+        for obs in self.get_gnss_baseline_observations():
+            gnss_point_ids.add(obs.from_point_id)
+            gnss_point_ids.add(obs.to_point_id)
+
+        unknowns = 0
+        for point_id in gnss_point_ids:
+            if point_id in self.points:
+                point = self.points[point_id]
+                if not point.fixed_easting:
+                    unknowns += 1
+                if not point.fixed_northing:
+                    unknowns += 1
+                if not point.fixed_height:
+                    unknowns += 1
+        return unknowns
+
+    def get_3d_degrees_of_freedom(self) -> int:
+        """
+        Calculate degrees of freedom for 3D GNSS adjustment.
+
+        Each GNSS baseline contributes 3 observations (dE, dN, dH).
+        DOF = 3 * num_baselines - num_unknowns
+
+        Returns:
+            Degrees of freedom for 3D adjustment
+        """
+        num_obs = 3 * len(self.get_gnss_baseline_observations())  # 3 components per baseline
+        num_unknowns = self._count_3d_unknowns()
+        return num_obs - num_unknowns
+
+    def validate_3d(self) -> List[str]:
+        """
+        Validate the network for 3D GNSS baseline adjustment.
+
+        Checks for:
+        - At least one GNSS baseline observation
+        - Referenced points exist
+        - At least one point with fixed 3D coordinates (or sufficient constraints)
+        - Network connectivity via baselines
+        - Sufficient observations for adjustment
+
+        Returns:
+            List of error messages (empty if valid)
+        """
+        errors: List[str] = []
+
+        gnss_obs = self.get_gnss_baseline_observations()
+        if not gnss_obs:
+            errors.append("Network has no GNSS baseline observations")
+            return errors
+
+        # Check for missing points in observations
+        for obs in gnss_obs:
+            if obs.from_point_id not in self.points:
+                errors.append(f"Baseline references missing point: '{obs.from_point_id}'")
+            if obs.to_point_id not in self.points:
+                errors.append(f"Baseline references missing point: '{obs.to_point_id}'")
+
+        if errors:
+            return errors  # Can't continue if points are missing
+
+        # Get all point IDs in GNSS network
+        gnss_point_ids: Set[str] = set()
+        for obs in gnss_obs:
+            gnss_point_ids.add(obs.from_point_id)
+            gnss_point_ids.add(obs.to_point_id)
+
+        # Check for datum definition
+        # Need at least one point with some fixed coordinates
+        has_fixed_e = False
+        has_fixed_n = False
+        has_fixed_h = False
+
+        for pid in gnss_point_ids:
+            point = self.points[pid]
+            if point.fixed_easting:
+                has_fixed_e = True
+            if point.fixed_northing:
+                has_fixed_n = True
+            if point.fixed_height:
+                has_fixed_h = True
+
+        if not has_fixed_e:
+            errors.append("No fixed Easting in network (datum definition required)")
+        if not has_fixed_n:
+            errors.append("No fixed Northing in network (datum definition required)")
+        if not has_fixed_h:
+            errors.append("No fixed Height in network (datum definition required)")
+
+        # Check connectivity via GNSS baselines
+        adjacency: Dict[str, Set[str]] = defaultdict(set)
+        for obs in gnss_obs:
+            adjacency[obs.from_point_id].add(obs.to_point_id)
+            adjacency[obs.to_point_id].add(obs.from_point_id)
+
+        if gnss_point_ids:
+            visited: Set[str] = set()
+            start_point = next(iter(gnss_point_ids))
+            queue = [start_point]
+            visited.add(start_point)
+
+            while queue:
+                current = queue.pop(0)
+                for neighbor in adjacency.get(current, set()):
+                    if neighbor not in visited:
+                        visited.add(neighbor)
+                        queue.append(neighbor)
+
+            unvisited = gnss_point_ids - visited
+            if unvisited:
+                errors.append(
+                    f"GNSS network is disconnected. Unreachable points: {', '.join(sorted(unvisited))}"
+                )
+
+        # Check for sufficient observations
+        num_unknowns = self._count_3d_unknowns()
+        num_obs = 3 * len(gnss_obs)  # 3 components per baseline
+        if num_obs < num_unknowns:
+            errors.append(
+                f"Insufficient observations: {num_obs} observation components "
                 f"for {num_unknowns} unknowns (need at least {num_unknowns})"
             )
 
