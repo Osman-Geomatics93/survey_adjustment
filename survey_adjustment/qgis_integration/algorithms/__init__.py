@@ -1,7 +1,4 @@
-"""
-QGIS Processing algorithms for survey adjustment.
+"""QGIS Processing algorithms.
 
-This module will contain Processing provider algorithms (Phase 3+).
+These modules are only intended to be executed inside QGIS.
 """
-
-# Phase 3+ implementation

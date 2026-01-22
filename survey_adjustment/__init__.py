@@ -47,3 +47,13 @@ __all__ = [
     "ErrorEllipse",
     "ChiSquareTestResult",
 ]
+
+
+def classFactory(iface):
+    """QGIS calls this entry point to instantiate the plugin.
+
+    This function must be import-safe outside QGIS so unit tests can run in a
+    plain Python environment. We therefore import QGIS-facing code lazily.
+    """
+    from .qgis_integration.plugin import SurveyAdjustmentPlugin  # lazy import
+    return SurveyAdjustmentPlugin(iface)

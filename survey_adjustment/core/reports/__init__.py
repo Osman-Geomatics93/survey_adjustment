@@ -1,7 +1,5 @@
-"""
-Reports module for survey adjustment.
+"""Report generation helpers (QGIS-free)."""
 
-This module will contain report generation functionality (Phase 3+).
-"""
+from .html_report import render_html_report, save_html_report
 
-# Phase 3+ implementation
+__all__ = ["render_html_report", "save_html_report"]

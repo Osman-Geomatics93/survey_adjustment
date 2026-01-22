@@ -1,0 +1,13 @@
+[general]
+name=Survey Adjustment & Network Analysis
+description=Least-squares adjustment for survey networks (distance/direction/angle) with statistics and reliability.
+version=1.0.0
+qgisMinimumVersion=3.40
+author=Osman Ibrahim
+email=
+about=Advanced least-squares adjustment and network analysis for surveying workflows.
+category=Vector
+hasProcessingProvider=yes
+
+[experimental]
+experimental=false

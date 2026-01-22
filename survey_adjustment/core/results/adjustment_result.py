@@ -8,7 +8,7 @@ including adjusted coordinates, residuals, statistics, and error ellipses.
 import json
 import math
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional
 
 try:
@@ -19,6 +19,21 @@ except ImportError:
     np = None  # type: ignore
 
 from ..models.point import Point
+
+
+def _iso_utc_now() -> str:
+    """Return an ISO-8601 UTC timestamp ending with 'Z'."""
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _json_safe_value(value: Any) -> Any:
+    """Convert non-JSON-safe floats (nan/inf) to None."""
+    if value is None:
+        return None
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            return None
+    return value
 
 
 @dataclass
@@ -117,12 +132,12 @@ class ChiSquareTestResult:
         """Serialize chi-square test result to dictionary."""
         return {
             "test_name": "chi_square",
-            "test_statistic": self.test_statistic,
-            "critical_lower": self.critical_lower,
-            "critical_upper": self.critical_upper,
+            "test_statistic": _json_safe_value(self.test_statistic),
+            "critical_lower": _json_safe_value(self.critical_lower),
+            "critical_upper": _json_safe_value(self.critical_upper),
             "confidence_level": self.confidence_level,
             "passed": self.passed,
-            "p_value": self.p_value,
+            "p_value": _json_safe_value(self.p_value),
             "degrees_of_freedom": self.degrees_of_freedom
         }
 
@@ -173,17 +188,29 @@ class ResidualInfo:
     def to_dict(self) -> Dict[str, Any]:
         """Serialize residual info to dictionary."""
         data = {
+
             "obs_id": self.obs_id,
+
             "obs_type": self.obs_type,
-            "observed": self.observed,
-            "computed": self.computed,
-            "residual": self.residual,
-            "standardized_residual": self.standardized_residual,
-            "redundancy_number": self.redundancy_number,
-            "mdb": self.mdb,
-            "external_reliability": self.external_reliability,
+
+            "observed": _json_safe_value(self.observed),
+
+            "computed": _json_safe_value(self.computed),
+
+            "residual": _json_safe_value(self.residual),
+
+            "standardized_residual": _json_safe_value(self.standardized_residual),
+
+            "redundancy_number": _json_safe_value(self.redundancy_number),
+
+            "mdb": _json_safe_value(self.mdb),
+
+            "external_reliability": _json_safe_value(self.external_reliability),
+
             "is_outlier_candidate": self.is_outlier_candidate,
+
             "flagged": self.flagged
+
         }
         if self.from_point:
             data["from_point"] = self.from_point
@@ -267,7 +294,7 @@ class AdjustmentResult:
     def __post_init__(self):
         """Set timestamp if not provided."""
         if self.timestamp is None:
-            self.timestamp = datetime.utcnow().isoformat() + "Z"
+            self.timestamp = _iso_utc_now()
 
     @property
     def a_posteriori_sigma0(self) -> float:
@@ -347,7 +374,7 @@ class AdjustmentResult:
                 "iterations": self.iterations,
                 "converged": self.converged,
                 "degrees_of_freedom": self.degrees_of_freedom,
-                "variance_factor": self.variance_factor,
+                "variance_factor": _json_safe_value(self.variance_factor),
                 "a_posteriori_sigma0": self.a_posteriori_sigma0,
                 "error_message": self.error_message,
                 "messages": self.messages
