@@ -25,6 +25,13 @@ from .results import (
 
 from .solver import adjust_network_2d
 
+from .geometry import (
+    ellipse_polygon_points,
+    distance_residual_vector,
+    direction_residual_vector,
+    angle_residual_vector,
+)
+
 __all__ = [
     # Models
     "Point",
@@ -44,4 +51,10 @@ __all__ = [
 
     # Solvers
     "adjust_network_2d",
+
+    # Geometry
+    "ellipse_polygon_points",
+    "distance_residual_vector",
+    "direction_residual_vector",
+    "angle_residual_vector",
 ]
