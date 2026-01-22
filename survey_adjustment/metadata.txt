@@ -1,7 +1,7 @@
 [general]
 name=Survey Adjustment & Network Analysis
-description=Least-squares adjustment for survey networks (2D, 1D leveling, 3D GNSS baselines) with statistics and reliability.
-version=0.6.0
+description=Least-squares adjustment for survey networks (2D, 1D leveling, 3D GNSS, mixed classical+GNSS) with statistics and reliability.
+version=0.7.0
 qgisMinimumVersion=3.22
 author=Osman Ibrahim
 email=
