@@ -2,11 +2,11 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-0.8.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![QGIS](https://img.shields.io/badge/QGIS-3.22+-green.svg)
 ![Python](https://img.shields.io/badge/python-3.9+-yellow.svg)
-![Tests](https://img.shields.io/badge/tests-243%20passed-brightgreen.svg)
-![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)
+![Tests](https://img.shields.io/badge/tests-286%20passed-brightgreen.svg)
+![License](https://img.shields.io/badge/license-GPL--2.0-lightgrey.svg)
 
 **Rigorous least-squares adjustment for survey networks with statistical testing and reliability measures**
 
@@ -27,7 +27,9 @@ A professional QGIS plugin for **least-squares adjustment** of survey networks, 
 - **2D Network Adjustment** — Distances, directions, angles with error ellipses
 - **1D Leveling Adjustment** — Height difference networks
 - **3D GNSS Baseline Adjustment** — Full covariance support
-- **Unified Mixed Adjustment** — Classical + GNSS + Leveling in one solve *(New in v0.8.0)*
+- **Unified Mixed Adjustment** — Classical + GNSS + Leveling in one solve
+- **Robust Estimation** — IRLS with Huber, Danish, IGG-III weight functions *(New in v1.0.0)*
+- **Constraint Health Analysis** — Actionable messages for datum issues *(New in v1.0.0)*
 
 All adjustments include comprehensive **statistical testing**, **reliability measures**, and **outlier detection**.
 
@@ -37,7 +39,7 @@ All adjustments include comprehensive **statistical testing**, **reliability mea
 
 ### From ZIP (Recommended)
 
-1. Download `survey_adjustment_v0.8.0.zip`
+1. Download `survey_adjustment_v1.0.0.zip`
 2. In QGIS: **Plugins → Manage and Install Plugins → Install from ZIP**
 3. Select the downloaded ZIP file
 4. Enable the plugin
@@ -277,13 +279,13 @@ cd survey_adjustment_phase5
 python -m pytest -v
 ```
 
-Current status: **243 tests passing**
+Current status: **286 tests passing**
 
 ### Building the Plugin
 
 ```bash
 git archive --format=zip --prefix=survey_adjustment/ \
-  -o survey_adjustment_v0.8.0.zip HEAD:survey_adjustment
+  -o survey_adjustment_v1.0.0.zip HEAD:survey_adjustment
 ```
 
 ---
@@ -292,7 +294,9 @@ git archive --format=zip --prefix=survey_adjustment/ \
 
 | Version | Date | Changes |
 |---------|------|---------|
-| **0.8.0** | 2025-01 | Unified mixed adjustment (classical + GNSS + leveling) |
+| **1.0.0** | 2026-01 | Robust estimation (IRLS), constraint health analysis, auto-datum |
+| 0.9.0 | 2026-01 | Robust estimation with Huber, Danish, IGG-III |
+| 0.8.0 | 2025-01 | Unified mixed adjustment (classical + GNSS + leveling) |
 | 0.7.0 | 2025-01 | Mixed adjustment (classical + GNSS) |
 | 0.6.0 | 2025-01 | 3D GNSS baseline adjustment |
 | 0.5.0 | 2025-01 | 1D leveling adjustment |
@@ -311,7 +315,7 @@ git archive --format=zip --prefix=survey_adjustment/ \
 
 ## License
 
-MIT License - See [LICENSE](LICENSE) for details.
+GPL-2.0-or-later - See [LICENSE](LICENSE) for details.
 
 ---
 
@@ -320,8 +324,8 @@ MIT License - See [LICENSE](LICENSE) for details.
 If you use this plugin in academic work, please cite:
 
 ```
-Survey Adjustment & Network Analysis QGIS Plugin, v0.8.0
-https://github.com/osman-ibrahim/survey-adjustment
+Survey Adjustment & Network Analysis QGIS Plugin, v1.0.0
+https://github.com/Osman-Geomatics93/survey_adjustment
 ```
 
 ---
