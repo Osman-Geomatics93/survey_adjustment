@@ -30,8 +30,10 @@ class SurveyAdjustmentProvider(QgsProcessingProvider):
         from .algorithms.adjust_network_2d import AdjustNetwork2DAlgorithm
         from .algorithms.adjust_leveling_1d import AdjustLeveling1DAlgorithm
         from .algorithms.adjust_network_3d_gnss import AdjustNetwork3DGnssAlgorithm
+        from .algorithms.adjust_network_mixed import AdjustNetworkMixedAlgorithm
 
         self.addAlgorithm(ValidateNetworkAlgorithm())
         self.addAlgorithm(AdjustNetwork2DAlgorithm())
         self.addAlgorithm(AdjustLeveling1DAlgorithm())
         self.addAlgorithm(AdjustNetwork3DGnssAlgorithm())
+        self.addAlgorithm(AdjustNetworkMixedAlgorithm())

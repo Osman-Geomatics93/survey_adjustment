@@ -695,6 +695,184 @@ class Network:
 
         return errors
 
+    # Mixed Adjustment Network Methods
+
+    def validate_mixed(self) -> List[str]:
+        """
+        Validate the network for mixed adjustment (classical + GNSS).
+
+        Checks for:
+        - At least one observation (classical or GNSS)
+        - Referenced points exist
+        - Sufficient datum constraints:
+          - For horizontal (E, N): at least one fully fixed point, or 3+ fixed
+            components across 2+ points
+          - For height (H): required if GNSS baselines present
+        - Network connectivity
+        - Sufficient observations for adjustment
+
+        Returns:
+            List of error messages (empty if valid)
+        """
+        errors: List[str] = []
+
+        # Get observations by type
+        classical_obs: List[Observation] = []
+        gnss_obs: List[GnssBaselineObservation] = []
+
+        for obs in self.get_enabled_observations():
+            if isinstance(obs, GnssBaselineObservation):
+                gnss_obs.append(obs)
+            elif isinstance(obs, (DistanceObservation, DirectionObservation, AngleObservation)):
+                classical_obs.append(obs)
+
+        has_classical = len(classical_obs) > 0
+        has_gnss = len(gnss_obs) > 0
+
+        if not has_classical and not has_gnss:
+            errors.append("Network has no observations (classical or GNSS)")
+            return errors
+
+        # Collect all points referenced in observations
+        obs_point_ids: Set[str] = set()
+
+        for obs in classical_obs:
+            if isinstance(obs, DistanceObservation):
+                obs_point_ids.add(obs.from_point_id)
+                obs_point_ids.add(obs.to_point_id)
+            elif isinstance(obs, DirectionObservation):
+                obs_point_ids.add(obs.from_point_id)
+                obs_point_ids.add(obs.to_point_id)
+            elif isinstance(obs, AngleObservation):
+                obs_point_ids.add(obs.at_point_id)
+                obs_point_ids.add(obs.from_point_id)
+                obs_point_ids.add(obs.to_point_id)
+
+        for obs in gnss_obs:
+            obs_point_ids.add(obs.from_point_id)
+            obs_point_ids.add(obs.to_point_id)
+
+        # Check for missing points
+        for point_id in obs_point_ids:
+            if point_id not in self.points:
+                errors.append(f"Observation references missing point: '{point_id}'")
+
+        if errors:
+            return errors  # Can't continue if points are missing
+
+        # Check horizontal datum constraints (E, N)
+        fixed_e_points: Set[str] = set()
+        fixed_n_points: Set[str] = set()
+        fixed_h_points: Set[str] = set()
+
+        for pid in obs_point_ids:
+            point = self.points[pid]
+            if point.fixed_easting:
+                fixed_e_points.add(pid)
+            if point.fixed_northing:
+                fixed_n_points.add(pid)
+            if point.fixed_height:
+                fixed_h_points.add(pid)
+
+        # For 2D datum: need to fix translation (2 DOF)
+        # Rotation is absorbed by orientation unknowns if directions are present.
+        # Minimum requirement: at least one point with fixed E and one point with fixed N
+        # (typically the same point - a fully fixed control point)
+        fully_fixed_en = fixed_e_points & fixed_n_points
+
+        if not fixed_e_points:
+            errors.append(
+                "Insufficient horizontal datum: need at least one fixed Easting"
+            )
+        if not fixed_n_points:
+            errors.append(
+                "Insufficient horizontal datum: need at least one fixed Northing"
+            )
+
+        # For height datum: required if GNSS observations present
+        if has_gnss:
+            if not fixed_h_points:
+                errors.append(
+                    "No fixed height in network (required when GNSS baselines are present)"
+                )
+
+            # Check all GNSS points have height values
+            for pid in obs_point_ids:
+                point = self.points[pid]
+                if point.height is None:
+                    errors.append(f"Point '{pid}' has no height value (required for GNSS)")
+
+        # Check connectivity
+        adjacency: Dict[str, Set[str]] = defaultdict(set)
+
+        for obs in classical_obs:
+            if isinstance(obs, DistanceObservation):
+                adjacency[obs.from_point_id].add(obs.to_point_id)
+                adjacency[obs.to_point_id].add(obs.from_point_id)
+            elif isinstance(obs, DirectionObservation):
+                adjacency[obs.from_point_id].add(obs.to_point_id)
+                adjacency[obs.to_point_id].add(obs.from_point_id)
+            elif isinstance(obs, AngleObservation):
+                adjacency[obs.at_point_id].add(obs.from_point_id)
+                adjacency[obs.at_point_id].add(obs.to_point_id)
+                adjacency[obs.from_point_id].add(obs.at_point_id)
+                adjacency[obs.to_point_id].add(obs.at_point_id)
+
+        for obs in gnss_obs:
+            adjacency[obs.from_point_id].add(obs.to_point_id)
+            adjacency[obs.to_point_id].add(obs.from_point_id)
+
+        if obs_point_ids:
+            visited: Set[str] = set()
+            start_point = next(iter(obs_point_ids))
+            queue = [start_point]
+            visited.add(start_point)
+
+            while queue:
+                current = queue.pop(0)
+                for neighbor in adjacency.get(current, set()):
+                    if neighbor not in visited and neighbor in obs_point_ids:
+                        visited.add(neighbor)
+                        queue.append(neighbor)
+
+            unvisited = obs_point_ids - visited
+            if unvisited:
+                errors.append(
+                    f"Network is disconnected. Unreachable points: {', '.join(sorted(unvisited))}"
+                )
+
+        # Count observations and unknowns
+        # Classical: 1 obs each
+        # GNSS: 3 obs each (dE, dN, dH)
+        num_obs = len(classical_obs) + 3 * len(gnss_obs)
+
+        # Count unknowns
+        num_unknowns = 0
+        for pid in obs_point_ids:
+            point = self.points[pid]
+            if not point.fixed_easting:
+                num_unknowns += 1
+            if not point.fixed_northing:
+                num_unknowns += 1
+            if has_gnss and not point.fixed_height:
+                num_unknowns += 1
+
+        # Add direction set orientations
+        if has_classical:
+            direction_sets: Set[str] = set()
+            for obs in classical_obs:
+                if isinstance(obs, DirectionObservation):
+                    direction_sets.add(obs.set_id)
+            num_unknowns += len(direction_sets)
+
+        if num_obs < num_unknowns:
+            errors.append(
+                f"Insufficient observations: {num_obs} observation equations "
+                f"for {num_unknowns} unknowns (need at least {num_unknowns})"
+            )
+
+        return errors
+
     def summary(self) -> Dict[str, Any]:
         """
         Get a summary of network contents.

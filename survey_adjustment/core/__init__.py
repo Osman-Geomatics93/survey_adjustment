@@ -25,7 +25,7 @@ from .results import (
     ResidualInfo
 )
 
-from .solver import adjust_network_2d, adjust_leveling_1d, adjust_gnss_3d
+from .solver import adjust_network_2d, adjust_leveling_1d, adjust_gnss_3d, adjust_network_mixed
 
 from .geometry import (
     ellipse_polygon_points,
@@ -57,6 +57,7 @@ __all__ = [
     "adjust_network_2d",
     "adjust_leveling_1d",
     "adjust_gnss_3d",
+    "adjust_network_mixed",
 
     # Geometry
     "ellipse_polygon_points",

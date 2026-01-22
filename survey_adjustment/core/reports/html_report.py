@@ -35,6 +35,36 @@ def _is_gnss_result(result: AdjustmentResult) -> bool:
     return True
 
 
+def _is_mixed_result(result: AdjustmentResult) -> bool:
+    """Detect if this is a mixed adjustment (classical + GNSS).
+
+    Returns True if there are both GNSS and non-GNSS observations.
+    """
+    if not result.residual_details:
+        return False
+
+    has_gnss = False
+    has_classical = False
+
+    for r in result.residual_details:
+        if r.obs_type == "gnss_baseline":
+            has_gnss = True
+        elif r.obs_type in ("distance", "direction", "angle"):
+            has_classical = True
+
+    return has_gnss and has_classical
+
+
+def _has_gnss_observations(result: AdjustmentResult) -> bool:
+    """Check if result contains any GNSS baseline observations."""
+    if not result.residual_details:
+        return False
+    for r in result.residual_details:
+        if r.obs_type == "gnss_baseline":
+            return True
+    return False
+
+
 def render_html_report(result: AdjustmentResult, title: str | None = None) -> str:
     """Render an :class:`AdjustmentResult` as a standalone HTML document.
 
@@ -42,10 +72,14 @@ def render_html_report(result: AdjustmentResult, title: str | None = None) -> st
     """
     is_leveling = _is_leveling_result(result)
     is_gnss = _is_gnss_result(result)
+    is_mixed = _is_mixed_result(result)
+    has_gnss = _has_gnss_observations(result)
 
     if title is None:
         if is_leveling:
             title = "Leveling Adjustment Report"
+        elif is_mixed:
+            title = "Mixed Adjustment Report (Classical + GNSS)"
         elif is_gnss:
             title = "GNSS Baseline Adjustment Report"
         else:
@@ -114,8 +148,8 @@ def render_html_report(result: AdjustmentResult, title: str | None = None) -> st
                 "</tr>"
             )
         parts.append("</tbody></table>")
-    elif is_gnss:
-        # 3D GNSS adjustment: show E, N, H with all sigmas
+    elif is_gnss or is_mixed:
+        # 3D adjustment (GNSS or mixed): show E, N, H with all sigmas
         parts.append("<table><thead><tr><th>ID</th><th>Name</th><th>E</th><th>N</th><th>H</th><th>σE</th><th>σN</th><th>σH</th></tr></thead><tbody>")
         for pid in sorted(result.adjusted_points.keys()):
             p = result.adjusted_points[pid]
@@ -208,6 +242,48 @@ def render_html_report(result: AdjustmentResult, title: str | None = None) -> st
                 f"<td>{esc(r.from_point or '')}</td><td>{esc(r.to_point or '')}</td>"
                 f"<td>{r.observed:.3f}</td>"
                 f"<td>{v_mm:.2f}</td><td>{w_val}</td>"
+                f"<td>{r_val}</td>"
+                f"<td>{'⚑' if (r.flagged or r.is_outlier_candidate) else ''}</td>"
+                "</tr>"
+            )
+        parts.append("</tbody></table>")
+    elif is_mixed:
+        # Mixed residuals: classical (scalar) and GNSS (3D) in one table
+        parts.append(
+            "<table><thead><tr>"
+            "<th>ID</th><th>Type</th><th>From</th><th>To</th><th>Obs/Length</th><th>v/|v| (mm)</th><th>w</th>"
+            "<th>r</th><th>Flag</th>"
+            "</tr></thead><tbody>"
+        )
+        for r in result.residual_details:
+            cls = "flag" if (r.flagged or r.is_outlier_candidate) else ""
+            r_val = f"{r.redundancy_number:.3f}" if r.redundancy_number is not None else "-"
+            w_val = f"{r.standardized_residual:.3f}" if r.standardized_residual is not None else "-"
+
+            if r.obs_type == "gnss_baseline":
+                # GNSS: show length and 3D residual magnitude
+                v_mm = r.residual * 1000 if r.residual is not None else None
+                obs_val = f"{r.observed:.3f}"
+                v_str = f"{v_mm:.2f}" if v_mm is not None else "-"
+            else:
+                # Classical: show value and scalar residual
+                obs_val = f"{r.observed:.4f}" if isinstance(r.observed, float) else str(r.observed)
+                if r.residual is not None:
+                    if r.obs_type == "distance":
+                        v_str = f"{r.residual * 1000:.2f}"  # mm
+                    else:
+                        v_str = f"{r.residual * 206265:.2f}"  # arcsec for angles
+                else:
+                    v_str = "-"
+
+            parts.append(
+                f"<tr class='{cls}'>"
+                f"<td>{esc(r.obs_id)}</td>"
+                f"<td>{esc(r.obs_type)}</td>"
+                f"<td>{esc(r.from_point or r.at_point or '')}</td>"
+                f"<td>{esc(r.to_point or '')}</td>"
+                f"<td>{obs_val}</td>"
+                f"<td>{v_str}</td><td>{w_val}</td>"
                 f"<td>{r_val}</td>"
                 f"<td>{'⚑' if (r.flagged or r.is_outlier_candidate) else ''}</td>"
                 "</tr>"

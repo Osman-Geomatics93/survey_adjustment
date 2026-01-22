@@ -1,0 +1,900 @@
+"""survey_adjustment.core.solver.least_squares_mixed
+
+Unified least-squares adjustment combining:
+- Classical observations: distances, directions, angles (2D: E, N)
+- GNSS baselines: (3D: E, N, H with full covariance)
+
+This solver handles mixed observation types in a single adjustment:
+- Unknowns: E, N, H of free points + orientation ω for direction stations
+- Classical observations affect only E, N (height not involved)
+- GNSS baselines affect E, N, H with 3x3 covariance blocks
+- Proper weighting: scalar for classical, block-inverse for GNSS
+
+The adjustment is iterative (Gauss-Newton) due to non-linear direction/angle
+observations. GNSS baselines are linear but included in the same solve.
+
+This module intentionally contains **no QGIS imports** so it can be unit-
+tested and re-used in non-QGIS contexts.
+"""
+
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass
+from typing import Dict, List, Tuple, Optional, Set
+
+try:
+    import numpy as np
+except ImportError:  # pragma: no cover
+    np = None  # type: ignore
+
+from ..models.network import Network
+from ..models.options import AdjustmentOptions
+from ..models.point import Point
+from ..models.observation import (
+    Observation,
+    DistanceObservation,
+    DirectionObservation,
+    AngleObservation,
+    GnssBaselineObservation,
+)
+from ..results.adjustment_result import (
+    AdjustmentResult,
+    ResidualInfo,
+    ErrorEllipse,
+)
+from ..statistics import (
+    chi_square_global_test,
+    standardized_residuals,
+    local_outlier_threshold,
+    normal_ppf,
+    chi2_ppf,
+)
+from ..statistics.reliability import (
+    redundancy_numbers,
+    mdb_values,
+    external_reliability,
+)
+from .geometry import (
+    wrap_pi,
+    wrap_2pi,
+    azimuth,
+    distance_2d,
+    distance_partials,
+    azimuth_partials,
+    angle_at_point,
+    angle_partials,
+)
+
+
+@dataclass(frozen=True)
+class MixedParameterIndex:
+    """Mapping of unknown parameters to indices in the solver vector.
+
+    For mixed adjustment, coordinates include E, N, H (3D) when GNSS is present.
+    """
+    coord_index: Dict[Tuple[str, str], int]    # (point_id, 'E'|'N'|'H') -> idx
+    orientation_index: Dict[str, int]          # direction set_id -> idx
+    num_params: int
+    coord_order: List[Tuple[str, str]]
+    orientation_order: List[str]
+
+
+@dataclass
+class _State:
+    """Mutable state during iterative adjustment."""
+    points: Dict[str, Tuple[float, float, float]]  # id -> (E, N, H)
+    orientations: Dict[str, float]                  # set_id -> omega (rad)
+
+
+def _build_mixed_parameter_index(
+    network: Network,
+    gnss_obs: List[GnssBaselineObservation],
+    has_classical: bool,
+) -> MixedParameterIndex:
+    """Build parameter index for mixed adjustment.
+
+    For classical-only: E, N for non-fixed horizontal components
+    For GNSS or mixed: E, N, H for non-fixed components
+    Plus orientation unknowns for direction sets.
+
+    IMPORTANT: Height (H) unknowns are only added for points that actually
+    appear in GNSS baseline observations, since classical observations don't
+    constrain height.
+    """
+    coord_index: Dict[Tuple[str, str], int] = {}
+    orientation_index: Dict[str, int] = {}
+    coord_order: List[Tuple[str, str]] = []
+    orientation_order: List[str] = []
+
+    # Collect point IDs that appear in GNSS baselines
+    gnss_point_ids: Set[str] = set()
+    for obs in gnss_obs:
+        gnss_point_ids.add(obs.from_point_id)
+        gnss_point_ids.add(obs.to_point_id)
+
+    has_gnss = len(gnss_obs) > 0
+
+    idx = 0
+    for pid in sorted(network.points.keys()):
+        p = network.points[pid]
+
+        # E and N for all observations
+        if not p.fixed_easting:
+            coord_index[(pid, 'E')] = idx
+            coord_order.append((pid, 'E'))
+            idx += 1
+        if not p.fixed_northing:
+            coord_index[(pid, 'N')] = idx
+            coord_order.append((pid, 'N'))
+            idx += 1
+
+        # H only if GNSS baselines are present AND this point is in a GNSS baseline
+        if has_gnss and pid in gnss_point_ids and not p.fixed_height:
+            coord_index[(pid, 'H')] = idx
+            coord_order.append((pid, 'H'))
+            idx += 1
+
+    # Direction set orientations
+    if has_classical:
+        set_ids: Set[str] = set()
+        for obs in network.get_enabled_observations():
+            if isinstance(obs, DirectionObservation):
+                set_ids.add(obs.set_id)
+        for set_id in sorted(set_ids):
+            orientation_index[set_id] = idx
+            orientation_order.append(set_id)
+            idx += 1
+
+    return MixedParameterIndex(
+        coord_index=coord_index,
+        orientation_index=orientation_index,
+        num_params=idx,
+        coord_order=coord_order,
+        orientation_order=orientation_order,
+    )
+
+
+def _network_span(points: Dict[str, Point]) -> float:
+    """Approximate network span for orientation convergence scaling."""
+    if len(points) < 2:
+        return 1.0
+    coords = [(p.easting, p.northing) for p in points.values()]
+    max_d = 0.0
+    for i in range(len(coords)):
+        e1, n1 = coords[i]
+        for j in range(i + 1, len(coords)):
+            e2, n2 = coords[j]
+            max_d = max(max_d, distance_2d(e1, n1, e2, n2))
+    return max(max_d, 1.0)
+
+
+def _invert_3x3(matrix: np.ndarray) -> np.ndarray:
+    """Invert a 3x3 matrix."""
+    return np.linalg.inv(matrix)
+
+
+def adjust_network_mixed(
+    network: Network,
+    options: AdjustmentOptions | None = None,
+) -> AdjustmentResult:
+    """Run a mixed least-squares adjustment combining classical and GNSS observations.
+
+    This solver handles:
+    - Distance observations (2D)
+    - Direction observations with orientation unknowns (2D)
+    - Angle observations (2D)
+    - GNSS baseline observations (3D with full covariance)
+
+    Args:
+        network: Input network with points and mixed observations
+        options: Adjustment options (defaults if None)
+
+    Returns:
+        AdjustmentResult with adjusted coordinates, residuals, covariance, etc.
+    """
+    if np is None:
+        return AdjustmentResult.failure("NumPy is required for the least-squares solver")
+
+    options = options or AdjustmentOptions.default()
+
+    # Validate network for mixed adjustment
+    errors = network.validate_mixed()
+    if errors:
+        return AdjustmentResult.failure("; ".join(errors))
+
+    # Categorize observations
+    enabled_obs: List[Observation] = list(network.get_enabled_observations())
+
+    classical_obs: List[Observation] = []
+    gnss_obs: List[GnssBaselineObservation] = []
+
+    for obs in enabled_obs:
+        if isinstance(obs, GnssBaselineObservation):
+            gnss_obs.append(obs)
+        elif isinstance(obs, (DistanceObservation, DirectionObservation, AngleObservation)):
+            classical_obs.append(obs)
+        else:
+            return AdjustmentResult.failure(f"Unsupported observation type: {type(obs)}")
+
+    has_classical = len(classical_obs) > 0
+    has_gnss = len(gnss_obs) > 0
+
+    if not has_classical and not has_gnss:
+        return AdjustmentResult.failure("No observations to adjust")
+
+    # Count total observation equations
+    # Classical: 1 equation each
+    # GNSS: 3 equations each (dE, dN, dH)
+    m_classical = len(classical_obs)
+    m_gnss = 3 * len(gnss_obs)
+    m = m_classical + m_gnss
+
+    # Build parameter index
+    index = _build_mixed_parameter_index(network, gnss_obs, has_classical)
+    n = index.num_params
+
+    if n == 0:
+        return AdjustmentResult.failure("All coordinates are fixed - nothing to adjust")
+
+    # Check for height values if GNSS present
+    if has_gnss:
+        for pid, p in network.points.items():
+            if p.height is None:
+                return AdjustmentResult.failure(f"Point '{pid}' has no height value (required for GNSS)")
+
+    # Build initial state
+    state = _State(
+        points={
+            pid: (p.easting, p.northing, p.height if p.height is not None else 0.0)
+            for pid, p in network.points.items()
+        },
+        orientations={set_id: 0.0 for set_id in index.orientation_order},
+    )
+
+    span = _network_span(network.points)
+    orient_tol = max(1e-14, options.convergence_threshold / span)
+
+    converged = False
+
+    # Pre-compute GNSS weight blocks (constant across iterations)
+    gnss_weight_blocks: List[np.ndarray] = []
+    gnss_cov_blocks: List[np.ndarray] = []
+
+    for obs in gnss_obs:
+        C = np.array(obs.covariance_matrix, dtype=float)
+        gnss_cov_blocks.append(C)
+        try:
+            P = _invert_3x3(C)
+        except np.linalg.LinAlgError:
+            return AdjustmentResult.failure(
+                f"Baseline {obs.id}: covariance matrix is singular"
+            )
+        gnss_weight_blocks.append(P)
+
+    # Iterative adjustment (Gauss-Newton)
+    for it in range(1, options.max_iterations + 1):
+        # Build design matrix and misclosure
+        A, w, sigmas_classical, computed_classical, gnss_l = _linearize_mixed(
+            classical_obs, gnss_obs, state, index, m, n
+        )
+
+        # Build normal equations with mixed weighting
+        # For classical: diagonal weights (1/sigma^2)
+        # For GNSS: block weights (P = C^-1)
+
+        N = np.zeros((n, n), dtype=float)
+        u = np.zeros(n, dtype=float)
+
+        # Classical contribution (rows 0 to m_classical-1)
+        if m_classical > 0:
+            A_c = A[:m_classical, :]
+            w_c = w[:m_classical]
+            weights_c = 1.0 / (sigmas_classical ** 2)
+
+            Aw_c = A_c * weights_c[:, None]
+            N += A_c.T @ Aw_c
+            u += A_c.T @ (weights_c * w_c)
+
+        # GNSS contribution (rows m_classical to m-1)
+        if m_gnss > 0:
+            for i, P_block in enumerate(gnss_weight_blocks):
+                row_base = m_classical + 3 * i
+                A_g = A[row_base:row_base+3, :]
+                l_g = w[row_base:row_base+3]
+
+                # N += A_g^T @ P @ A_g
+                AtP = A_g.T @ P_block
+                N += AtP @ A_g
+                u += AtP @ l_g
+
+        # Solve normal equations
+        try:
+            dx = np.linalg.solve(N, u)
+        except np.linalg.LinAlgError:
+            return AdjustmentResult.failure(
+                "Normal matrix is singular (datum definition / geometry issue)"
+            )
+
+        # Apply corrections
+        _apply_corrections_mixed(state, index, dx)
+
+        # Convergence check
+        coord_max = 0.0
+        for (pid, comp), idxp in index.coord_index.items():
+            coord_max = max(coord_max, abs(dx[idxp]))
+        orient_max = 0.0
+        for set_id, idxo in index.orientation_index.items():
+            orient_max = max(orient_max, abs(dx[idxo]))
+
+        if coord_max <= options.convergence_threshold and orient_max <= orient_tol:
+            converged = True
+            break
+
+    # Final computation for residuals and statistics
+    A_fin, w_fin, sigmas_fin, computed_fin, gnss_l_fin = _linearize_mixed(
+        classical_obs, gnss_obs, state, index, m, n
+    )
+    residuals = w_fin
+
+    # Compute vTPv (weighted sum of squared residuals)
+    vTPv = 0.0
+
+    # Classical contribution
+    if m_classical > 0:
+        v_c = residuals[:m_classical]
+        weights_c = 1.0 / (sigmas_fin ** 2)
+        vTPv += float((v_c * v_c * weights_c).sum())
+
+    # GNSS contribution
+    for i, P_block in enumerate(gnss_weight_blocks):
+        row_base = m_classical + 3 * i
+        v_g = residuals[row_base:row_base+3]
+        vTPv += float(v_g @ P_block @ v_g)
+
+    dof = m - n
+
+    if dof > 0:
+        sigma0_sq = vTPv / dof
+        variance_factor = sigma0_sq / options.a_priori_variance
+    else:
+        variance_factor = 1.0
+        sigma0_sq = options.a_priori_variance
+
+    sigma0_sq_post = variance_factor * options.a_priori_variance
+
+    # Compute Qxx (cofactor matrix of unknowns)
+    Qxx: Optional[np.ndarray] = None
+    cov_matrix: Optional[np.ndarray] = None
+
+    if options.compute_covariances:
+        # Rebuild N for Qxx
+        N_fin = np.zeros((n, n), dtype=float)
+
+        if m_classical > 0:
+            A_c = A_fin[:m_classical, :]
+            weights_c = 1.0 / (sigmas_fin ** 2)
+            N_fin += (A_c.T * weights_c) @ A_c
+
+        for i, P_block in enumerate(gnss_weight_blocks):
+            row_base = m_classical + 3 * i
+            A_g = A_fin[row_base:row_base+3, :]
+            N_fin += A_g.T @ P_block @ A_g
+
+        try:
+            Qxx = np.linalg.solve(N_fin, np.eye(n))
+            cov_matrix = sigma0_sq_post * Qxx
+        except np.linalg.LinAlgError:
+            Qxx = None
+            cov_matrix = None
+
+    # Build adjusted points with posterior sigmas
+    adjusted_points: Dict[str, Point] = {}
+    point_covs: Dict[str, np.ndarray] = {}
+    error_ellipses: Dict[str, ErrorEllipse] = {}
+
+    for pid, p in network.points.items():
+        e, nn, h = state.points[pid]
+
+        sigma_e = None
+        sigma_n = None
+        sigma_h = None
+
+        if cov_matrix is not None:
+            if (pid, 'E') in index.coord_index:
+                ie = index.coord_index[(pid, 'E')]
+                sigma_e = math.sqrt(max(cov_matrix[ie, ie], 0.0))
+            elif p.fixed_easting:
+                sigma_e = 0.0
+
+            if (pid, 'N') in index.coord_index:
+                in_ = index.coord_index[(pid, 'N')]
+                sigma_n = math.sqrt(max(cov_matrix[in_, in_], 0.0))
+            elif p.fixed_northing:
+                sigma_n = 0.0
+
+            if (pid, 'H') in index.coord_index:
+                ih = index.coord_index[(pid, 'H')]
+                sigma_h = math.sqrt(max(cov_matrix[ih, ih], 0.0))
+            elif p.fixed_height:
+                sigma_h = 0.0
+
+            # Build point covariance (2x2 for EN, or 3x3 if height included)
+            if has_gnss:
+                cov_3x3 = np.zeros((3, 3), dtype=float)
+                indices = []
+                for comp, key in enumerate(['E', 'N', 'H']):
+                    if (pid, key) in index.coord_index:
+                        indices.append((comp, index.coord_index[(pid, key)]))
+                    else:
+                        indices.append((comp, None))
+
+                for ci, idx_i in indices:
+                    for cj, idx_j in indices:
+                        if idx_i is not None and idx_j is not None:
+                            cov_3x3[ci, cj] = cov_matrix[idx_i, idx_j]
+
+                point_covs[pid] = cov_3x3
+            else:
+                cov_2x2 = np.zeros((2, 2), dtype=float)
+                if (pid, 'E') in index.coord_index:
+                    ie = index.coord_index[(pid, 'E')]
+                    cov_2x2[0, 0] = cov_matrix[ie, ie]
+                if (pid, 'N') in index.coord_index:
+                    in_ = index.coord_index[(pid, 'N')]
+                    cov_2x2[1, 1] = cov_matrix[in_, in_]
+                if (pid, 'E') in index.coord_index and (pid, 'N') in index.coord_index:
+                    ie = index.coord_index[(pid, 'E')]
+                    in_ = index.coord_index[(pid, 'N')]
+                    cov_2x2[0, 1] = cov_matrix[ie, in_]
+                    cov_2x2[1, 0] = cov_matrix[in_, ie]
+                point_covs[pid] = cov_2x2
+
+        # Use original height if no GNSS observations
+        point_h = h if has_gnss else p.height
+
+        adjusted_points[pid] = Point(
+            id=p.id,
+            name=p.name,
+            easting=e,
+            northing=nn,
+            height=point_h,
+            fixed_easting=p.fixed_easting,
+            fixed_northing=p.fixed_northing,
+            fixed_height=p.fixed_height if has_gnss else p.fixed_height,
+            sigma_easting=sigma_e,
+            sigma_northing=sigma_n,
+            sigma_height=sigma_h,
+        )
+
+        # Compute error ellipse (2D for horizontal)
+        if options.compute_error_ellipses and cov_matrix is not None:
+            if (pid, 'E') in index.coord_index and (pid, 'N') in index.coord_index:
+                ie = index.coord_index[(pid, 'E')]
+                in_ = index.coord_index[(pid, 'N')]
+                cov_2x2 = np.array([
+                    [cov_matrix[ie, ie], cov_matrix[ie, in_]],
+                    [cov_matrix[in_, ie], cov_matrix[in_, in_]],
+                ])
+                ellipse = _compute_error_ellipse(pid, cov_2x2, options.confidence_level)
+                error_ellipses[pid] = ellipse
+
+    # Compute standardized residuals and reliability measures
+    sigma0_hat = max(math.sqrt(sigma0_sq_post), 1e-12) if dof > 0 else 1.0
+    sigma0_for_w = max(math.sqrt(options.a_priori_variance), 1e-12)
+
+    # Build diagonal of Qvv for each observation
+    qvv_diag: Optional[np.ndarray] = None
+
+    if dof > 0 and Qxx is not None:
+        # diag(Qvv) = diag(Qll) - diag(A Qxx A^T)
+        # Qll is the cofactor matrix of observations
+
+        # For classical: Qll_ii = sigma_i^2
+        # For GNSS: Qll is block diagonal with covariance blocks
+
+        B = A_fin @ Qxx
+        diag_AQAt = (B * A_fin).sum(axis=1)
+
+        # Build Qll diagonal
+        Qll_diag = np.zeros(m, dtype=float)
+
+        # Classical
+        if m_classical > 0:
+            Qll_diag[:m_classical] = sigmas_fin ** 2
+
+        # GNSS (diagonal of covariance blocks)
+        for i, C in enumerate(gnss_cov_blocks):
+            row_base = m_classical + 3 * i
+            Qll_diag[row_base + 0] = C[0, 0]
+            Qll_diag[row_base + 1] = C[1, 1]
+            Qll_diag[row_base + 2] = C[2, 2]
+
+        qvv_diag = Qll_diag - diag_AQAt
+        qvv_diag = np.maximum(qvv_diag, 1e-30)
+
+    # Local test threshold
+    k_alpha = local_outlier_threshold(options.alpha_local)
+    k_beta = normal_ppf(options.mdb_power)
+
+    # Compute standardized residuals
+    std_residuals: Dict[str, float] = {}
+    residual_details: List[ResidualInfo] = []
+    flagged: List[str] = []
+
+    # Build P diagonal for reliability computations
+    Pdiag = np.zeros(m, dtype=float)
+    if m_classical > 0:
+        Pdiag[:m_classical] = 1.0 / (sigmas_fin ** 2)
+    for i, P_block in enumerate(gnss_weight_blocks):
+        row_base = m_classical + 3 * i
+        Pdiag[row_base + 0] = P_block[0, 0]
+        Pdiag[row_base + 1] = P_block[1, 1]
+        Pdiag[row_base + 2] = P_block[2, 2]
+
+    # Reliability measures
+    r_vals = None
+    mdb_vals = None
+    ext_rel = None
+
+    if options.compute_reliability and Qxx is not None and qvv_diag is not None and dof > 0:
+        r_vals = redundancy_numbers(qvv_diag, Pdiag)
+
+        # Build sigma array for MDB (use observation sigmas for classical, diagonal for GNSS)
+        sigmas_all = np.zeros(m, dtype=float)
+        if m_classical > 0:
+            sigmas_all[:m_classical] = sigmas_fin
+        for i, C in enumerate(gnss_cov_blocks):
+            row_base = m_classical + 3 * i
+            sigmas_all[row_base + 0] = math.sqrt(C[0, 0])
+            sigmas_all[row_base + 1] = math.sqrt(C[1, 1])
+            sigmas_all[row_base + 2] = math.sqrt(C[2, 2])
+
+        mdb_vals = mdb_values(k_alpha, k_beta, sigma0_hat, sigmas_all, r_vals)
+
+        coord_param_indices = [idx for (pid, comp), idx in index.coord_index.items()]
+        ext_rel = external_reliability(Qxx, A_fin, Pdiag, mdb_vals, coord_param_indices)
+
+    # Process classical residuals
+    for j, obs in enumerate(classical_obs):
+        res = residuals[j]
+        comp_val = computed_fin[j]
+
+        # Compute standardized residual with safeguard against division by zero
+        qvv_var = qvv_diag[j] * sigma0_sq_post if qvv_diag is not None else 0.0
+        if qvv_var > 1e-30:
+            std = res / math.sqrt(qvv_var)
+        elif sigmas_fin[j] * sigma0_hat > 1e-30:
+            std = res / (sigmas_fin[j] * sigma0_hat)
+        else:
+            std = 0.0  # No redundancy - cannot compute meaningful standardized residual
+
+        obs_type = obs.obs_type.value
+        is_candidate = abs(float(std)) > float(k_alpha)
+        is_flagged = abs(float(std)) > float(options.outlier_threshold)
+
+        info = ResidualInfo(
+            obs_id=obs.id,
+            obs_type=obs_type,
+            observed=float(obs.value),
+            computed=float(comp_val),
+            residual=float(res),
+            standardized_residual=float(std),
+            redundancy_number=float(r_vals[j]) if r_vals is not None else None,
+            mdb=float(mdb_vals[j]) if mdb_vals is not None else None,
+            external_reliability=float(ext_rel[j]) if ext_rel is not None else None,
+            is_outlier_candidate=is_candidate,
+            flagged=is_flagged,
+        )
+
+        if isinstance(obs, (DistanceObservation, DirectionObservation)):
+            info.from_point = obs.from_point_id
+            info.to_point = obs.to_point_id
+        elif isinstance(obs, AngleObservation):
+            info.at_point = obs.at_point_id
+            info.from_point = obs.from_point_id
+            info.to_point = obs.to_point_id
+
+        std_residuals[obs.id] = float(std)
+        residual_details.append(info)
+        if is_flagged:
+            flagged.append(obs.id)
+
+    # Process GNSS baseline residuals
+    for i, obs in enumerate(gnss_obs):
+        row_base = m_classical + 3 * i
+
+        vE = residuals[row_base + 0]
+        vN = residuals[row_base + 1]
+        vH = residuals[row_base + 2]
+
+        # Standardized residuals for each component with safeguard against division by zero
+        C = gnss_cov_blocks[i]
+
+        qvv_E = qvv_diag[row_base + 0] * sigma0_sq_post if qvv_diag is not None else 0.0
+        if qvv_E > 1e-30:
+            wE = vE / math.sqrt(qvv_E)
+        elif C[0, 0] * sigma0_sq_post > 1e-30:
+            wE = vE / (math.sqrt(C[0, 0]) * sigma0_hat)
+        else:
+            wE = 0.0
+
+        qvv_N = qvv_diag[row_base + 1] * sigma0_sq_post if qvv_diag is not None else 0.0
+        if qvv_N > 1e-30:
+            wN = vN / math.sqrt(qvv_N)
+        elif C[1, 1] * sigma0_sq_post > 1e-30:
+            wN = vN / (math.sqrt(C[1, 1]) * sigma0_hat)
+        else:
+            wN = 0.0
+
+        qvv_H = qvv_diag[row_base + 2] * sigma0_sq_post if qvv_diag is not None else 0.0
+        if qvv_H > 1e-30:
+            wH = vH / math.sqrt(qvv_H)
+        elif C[2, 2] * sigma0_sq_post > 1e-30:
+            wH = vH / (math.sqrt(C[2, 2]) * sigma0_hat)
+        else:
+            wH = 0.0
+
+        w_max = max(abs(wE), abs(wN), abs(wH))
+
+        # Average redundancy
+        r_avg = None
+        if r_vals is not None:
+            r_avg = (r_vals[row_base] + r_vals[row_base + 1] + r_vals[row_base + 2]) / 3.0
+
+        is_candidate = bool(w_max > k_alpha)
+        is_flagged = bool(w_max > options.outlier_threshold)
+
+        # Computed baseline length
+        from_coords = state.points[obs.from_point_id]
+        to_coords = state.points[obs.to_point_id]
+        computed_dE = to_coords[0] - from_coords[0]
+        computed_dN = to_coords[1] - from_coords[1]
+        computed_dH = to_coords[2] - from_coords[2]
+        computed_length = math.sqrt(computed_dE**2 + computed_dN**2 + computed_dH**2)
+
+        info = ResidualInfo(
+            obs_id=obs.id,
+            obs_type="gnss_baseline",
+            observed=obs.baseline_length,
+            computed=computed_length,
+            residual=math.sqrt(vE**2 + vN**2 + vH**2),  # 3D residual magnitude
+            standardized_residual=w_max,
+            redundancy_number=r_avg,
+            mdb=None,  # MDB complex for correlated obs
+            external_reliability=None,
+            is_outlier_candidate=is_candidate,
+            flagged=is_flagged,
+            from_point=obs.from_point_id,
+            to_point=obs.to_point_id,
+        )
+
+        # Store component residuals as attributes
+        info._vE = vE
+        info._vN = vN
+        info._vH = vH
+        info._wE = wE
+        info._wN = wN
+        info._wH = wH
+
+        std_residuals[obs.id] = w_max
+        residual_details.append(info)
+        if is_flagged:
+            flagged.append(obs.id)
+
+    # Chi-square global test
+    chi_test = None
+    if dof > 0:
+        chi_test = chi_square_global_test(
+            vTPv=vTPv,
+            dof=dof,
+            alpha=options.alpha,
+            a_priori_variance=options.a_priori_variance,
+        )
+
+    # Build residuals dict
+    residuals_dict: Dict[str, float] = {}
+    for j, obs in enumerate(classical_obs):
+        residuals_dict[obs.id] = float(residuals[j])
+    for i, obs in enumerate(gnss_obs):
+        row_base = m_classical + 3 * i
+        # Store 3D magnitude for GNSS
+        vE = residuals[row_base + 0]
+        vN = residuals[row_base + 1]
+        vH = residuals[row_base + 2]
+        residuals_dict[obs.id] = math.sqrt(vE**2 + vN**2 + vH**2)
+
+    messages = []
+    if dof == 0:
+        messages.append("No redundancy (dof=0): variance factor set to 1.0")
+    if has_gnss and has_classical:
+        messages.append(f"Mixed adjustment: {len(classical_obs)} classical obs + {len(gnss_obs)} GNSS baselines")
+
+    return AdjustmentResult(
+        success=True,
+        iterations=min(options.max_iterations, it if 'it' in locals() else 0),
+        converged=converged,
+        adjusted_points=adjusted_points,
+        residuals=residuals_dict,
+        standardized_residuals=std_residuals,
+        residual_details=residual_details,
+        degrees_of_freedom=dof,
+        variance_factor=float(variance_factor),
+        chi_square_test=chi_test,
+        covariance_matrix=cov_matrix,
+        point_covariances=point_covs,
+        error_ellipses=error_ellipses,
+        flagged_observations=flagged,
+        messages=messages,
+        network_name=network.name,
+    )
+
+
+def _linearize_mixed(
+    classical_obs: List[Observation],
+    gnss_obs: List[GnssBaselineObservation],
+    state: _State,
+    index: MixedParameterIndex,
+    m: int,
+    n: int,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[float], np.ndarray]:
+    """Build design matrix A and misclosure vector w for mixed observations.
+
+    Returns:
+        A: Design matrix (m x n)
+        w: Misclosure vector (m,)
+        sigmas: Standard deviations for classical obs (len = len(classical_obs))
+        computed: Computed values for classical obs
+        gnss_l: GNSS misclosure component (len = 3 * len(gnss_obs))
+    """
+    m_classical = len(classical_obs)
+    m_gnss = 3 * len(gnss_obs)
+
+    A = np.zeros((m, n), dtype=float)
+    w = np.zeros(m, dtype=float)
+
+    sigmas = np.zeros(m_classical, dtype=float)
+    computed: List[float] = []
+    gnss_l = np.zeros(m_gnss, dtype=float)
+
+    # Classical observations (rows 0 to m_classical-1)
+    for i, obs in enumerate(classical_obs):
+        sigmas[i] = float(obs.sigma)
+
+        if isinstance(obs, DistanceObservation):
+            e1, n1, _ = state.points[obs.from_point_id]
+            e2, n2, _ = state.points[obs.to_point_id]
+            comp = distance_2d(e1, n1, e2, n2)
+            computed.append(comp)
+            w[i] = float(obs.value) - comp
+
+            dE1, dN1, dE2, dN2 = distance_partials(e1, n1, e2, n2)
+            _set_A_coord(A, i, index, obs.from_point_id, dE1, dN1)
+            _set_A_coord(A, i, index, obs.to_point_id, dE2, dN2)
+
+        elif isinstance(obs, DirectionObservation):
+            e1, n1, _ = state.points[obs.from_point_id]
+            e2, n2, _ = state.points[obs.to_point_id]
+            az = azimuth(e1, n1, e2, n2)
+            omega = state.orientations.get(obs.set_id, 0.0)
+            comp = wrap_2pi(az + omega)
+            computed.append(comp)
+            w[i] = wrap_pi(float(obs.value) - (az + omega))
+
+            dE1, dN1, dE2, dN2 = azimuth_partials(e1, n1, e2, n2)
+            _set_A_coord(A, i, index, obs.from_point_id, dE1, dN1)
+            _set_A_coord(A, i, index, obs.to_point_id, dE2, dN2)
+
+            if obs.set_id in index.orientation_index:
+                A[i, index.orientation_index[obs.set_id]] = 1.0
+
+        elif isinstance(obs, AngleObservation):
+            e_at, n_at, _ = state.points[obs.at_point_id]
+            e_from, n_from, _ = state.points[obs.from_point_id]
+            e_to, n_to, _ = state.points[obs.to_point_id]
+            comp = angle_at_point(e_at, n_at, e_from, n_from, e_to, n_to)
+            computed.append(comp)
+            w[i] = wrap_pi(float(obs.value) - comp)
+
+            dE_from, dN_from, dE_at, dN_at, dE_to, dN_to = angle_partials(
+                e_at, n_at, e_from, n_from, e_to, n_to
+            )
+            _set_A_coord(A, i, index, obs.from_point_id, dE_from, dN_from)
+            _set_A_coord(A, i, index, obs.at_point_id, dE_at, dN_at)
+            _set_A_coord(A, i, index, obs.to_point_id, dE_to, dN_to)
+
+    # GNSS observations (rows m_classical to m-1)
+    for i, obs in enumerate(gnss_obs):
+        row_base = m_classical + 3 * i
+
+        from_pid = obs.from_point_id
+        to_pid = obs.to_point_id
+
+        from_E, from_N, from_H = state.points[from_pid]
+        to_E, to_N, to_H = state.points[to_pid]
+
+        # Design matrix: dE = E_to - E_from, etc.
+        # E component (row_base + 0)
+        if (to_pid, 'E') in index.coord_index:
+            A[row_base + 0, index.coord_index[(to_pid, 'E')]] = 1.0
+        if (from_pid, 'E') in index.coord_index:
+            A[row_base + 0, index.coord_index[(from_pid, 'E')]] = -1.0
+
+        # N component (row_base + 1)
+        if (to_pid, 'N') in index.coord_index:
+            A[row_base + 1, index.coord_index[(to_pid, 'N')]] = 1.0
+        if (from_pid, 'N') in index.coord_index:
+            A[row_base + 1, index.coord_index[(from_pid, 'N')]] = -1.0
+
+        # H component (row_base + 2)
+        if (to_pid, 'H') in index.coord_index:
+            A[row_base + 2, index.coord_index[(to_pid, 'H')]] = 1.0
+        if (from_pid, 'H') in index.coord_index:
+            A[row_base + 2, index.coord_index[(from_pid, 'H')]] = -1.0
+
+        # Misclosure: l = observed - computed
+        computed_dE = to_E - from_E
+        computed_dN = to_N - from_N
+        computed_dH = to_H - from_H
+
+        w[row_base + 0] = obs.dE - computed_dE
+        w[row_base + 1] = obs.dN - computed_dN
+        w[row_base + 2] = obs.dH - computed_dH
+
+        gnss_l[3 * i + 0] = w[row_base + 0]
+        gnss_l[3 * i + 1] = w[row_base + 1]
+        gnss_l[3 * i + 2] = w[row_base + 2]
+
+    return A, w, sigmas, computed, gnss_l
+
+
+def _set_A_coord(A: np.ndarray, row: int, index: MixedParameterIndex,
+                 point_id: str, dE: float, dN: float) -> None:
+    """Helper to set E, N coordinate partials into A if adjustable."""
+    if (point_id, 'E') in index.coord_index:
+        A[row, index.coord_index[(point_id, 'E')]] += float(dE)
+    if (point_id, 'N') in index.coord_index:
+        A[row, index.coord_index[(point_id, 'N')]] += float(dN)
+
+
+def _apply_corrections_mixed(state: _State, index: MixedParameterIndex,
+                              dx: np.ndarray) -> None:
+    """Apply corrections vector dx to the state."""
+    for (pid, comp), j in index.coord_index.items():
+        e, n, h = state.points[pid]
+        if comp == 'E':
+            e += float(dx[j])
+        elif comp == 'N':
+            n += float(dx[j])
+        elif comp == 'H':
+            h += float(dx[j])
+        state.points[pid] = (e, n, h)
+
+    for set_id, j in index.orientation_index.items():
+        state.orientations[set_id] = state.orientations.get(set_id, 0.0) + float(dx[j])
+
+
+def _compute_error_ellipse(point_id: str, cov2: np.ndarray,
+                           confidence: float) -> ErrorEllipse:
+    """Compute error ellipse parameters from 2x2 covariance matrix."""
+    vals, vecs = np.linalg.eigh(cov2)
+    order = np.argsort(vals)[::-1]
+    vals = vals[order]
+    vecs = vecs[:, order]
+
+    k2 = chi2_ppf(confidence, 2)
+    scale = math.sqrt(max(k2, 0.0))
+
+    semi_major = math.sqrt(max(vals[0], 0.0)) * scale
+    semi_minor = math.sqrt(max(vals[1], 0.0)) * scale
+
+    vE, vN = float(vecs[0, 0]), float(vecs[1, 0])
+    orientation = wrap_2pi(math.atan2(vE, vN))
+
+    return ErrorEllipse(
+        point_id=point_id,
+        semi_major=float(semi_major),
+        semi_minor=float(semi_minor),
+        orientation=float(orientation),
+        confidence_level=float(confidence),
+    )
