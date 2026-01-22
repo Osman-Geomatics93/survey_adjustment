@@ -64,6 +64,9 @@ class ValidateNetworkAlgorithm(QgsProcessingAlgorithm):
     def shortHelpString(self):  # type: ignore[override]
         return "Validates survey network inputs and datum constraints for least-squares adjustment."
 
+    def createInstance(self):  # type: ignore[override]
+        return ValidateNetworkAlgorithm()
+
     def initAlgorithm(self, config=None):  # type: ignore[override]
         self.addParameter(QgsProcessingParameterFile(
             self.INPUT_TRAVERSE,
