@@ -2,7 +2,7 @@
 name=Survey Adjustment & Network Analysis
 qgisMinimumVersion=3.22
 description=Least-squares adjustment for survey networks (2D, 1D leveling, 3D GNSS, mixed) with robust estimation, statistics, and reliability analysis.
-version=1.0.1
+version=1.0.2
 author=Osman Ibrahim
 email=422436@ogr.ktu.edu.tr
 

@@ -25,6 +25,7 @@ try:  # pragma: no cover
         QgsField,
         QgsFeature,
         QgsGeometry,
+        QgsPoint,
         QgsPointXY,
         QgsLineString,
         QgsWkbTypes,
@@ -53,6 +54,7 @@ except Exception:  # pragma: no cover
     QgsField = object  # type: ignore
     QgsFeature = object  # type: ignore
     QgsGeometry = object  # type: ignore
+    QgsPoint = object  # type: ignore
     QgsPointXY = object  # type: ignore
     QgsLineString = object  # type: ignore
     QgsWkbTypes = object  # type: ignore
@@ -520,8 +522,8 @@ class AdjustNetworkMixedAlgorithm(QgsProcessingAlgorithm):
             if from_pt and to_pt:
                 # Create line geometry
                 line = QgsLineString()
-                line.addVertex(QgsPointXY(from_pt.easting, from_pt.northing))
-                line.addVertex(QgsPointXY(to_pt.easting, to_pt.northing))
+                line.addVertex(QgsPoint(from_pt.easting, from_pt.northing))
+                line.addVertex(QgsPoint(to_pt.easting, to_pt.northing))
                 feat.setGeometry(QgsGeometry(line))
 
             feat.setAttributes([
