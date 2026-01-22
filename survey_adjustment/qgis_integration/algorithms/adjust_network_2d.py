@@ -18,6 +18,7 @@ try:  # pragma: no cover
         QgsProcessingParameterFileDestination,
         QgsProcessingParameterNumber,
         QgsProcessingParameterBoolean,
+        QgsProcessingParameterEnum,
         QgsProcessingParameterFeatureSink,
         QgsProcessingException,
         QgsFields,
@@ -44,6 +45,7 @@ except Exception:  # pragma: no cover
     QgsProcessingParameterFileDestination = object  # type: ignore
     QgsProcessingParameterNumber = object  # type: ignore
     QgsProcessingParameterBoolean = object  # type: ignore
+    QgsProcessingParameterEnum = object  # type: ignore
     QgsProcessingParameterFeatureSink = object  # type: ignore
     QgsProcessingException = RuntimeError
     QgsFields = object  # type: ignore
@@ -93,6 +95,11 @@ class AdjustNetwork2DAlgorithm(QgsProcessingAlgorithm):
     TOL = "TOL"
     COMPUTE_RELIABILITY = "COMPUTE_RELIABILITY"
     RESIDUAL_SCALE = "RESIDUAL_SCALE"
+    ROBUST_METHOD = "ROBUST_METHOD"
+
+    # Robust method options mapping
+    ROBUST_OPTIONS = ["None (Standard LS)", "Huber", "Danish", "IGG-III"]
+    ROBUST_VALUES = [None, "huber", "danish", "igg3"]
 
     # Output parameters
     OUTPUT_JSON = "OUTPUT_JSON"
@@ -196,6 +203,12 @@ class AdjustNetwork2DAlgorithm(QgsProcessingAlgorithm):
             type=QgsProcessingParameterNumber.Double,
             defaultValue=1000.0,
             minValue=1.0,
+        ))
+        self.addParameter(QgsProcessingParameterEnum(
+            self.ROBUST_METHOD,
+            "Robust estimation method",
+            options=self.ROBUST_OPTIONS,
+            defaultValue=0,  # None (Standard LS)
         ))
 
         # Report outputs
@@ -310,6 +323,8 @@ class AdjustNetwork2DAlgorithm(QgsProcessingAlgorithm):
         tol = float(self.parameterAsDouble(parameters, self.TOL, context))
         compute_reliability = self.parameterAsBool(parameters, self.COMPUTE_RELIABILITY, context)
         residual_scale = float(self.parameterAsDouble(parameters, self.RESIDUAL_SCALE, context))
+        robust_idx = self.parameterAsEnum(parameters, self.ROBUST_METHOD, context)
+        robust_method = self.ROBUST_VALUES[robust_idx]
 
         out_json = self.parameterAsFileOutput(parameters, self.OUTPUT_JSON, context)
         out_html = self.parameterAsFileOutput(parameters, self.OUTPUT_HTML, context)
@@ -354,10 +369,20 @@ class AdjustNetwork2DAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo(f"Network: {len(net.points)} points, {len(net.observations)} observations")
 
         # Run adjustment
+        from ...core.models.options import RobustEstimator
+        robust_enum = None
+        if robust_method == "huber":
+            robust_enum = RobustEstimator.HUBER
+        elif robust_method == "danish":
+            robust_enum = RobustEstimator.DANISH
+        elif robust_method == "igg3":
+            robust_enum = RobustEstimator.IGG3
+
         options = AdjustmentOptions(
             max_iterations=max_iter,
             convergence_threshold=tol,
             compute_reliability=compute_reliability,
+            robust_estimator=robust_enum,
         )
 
         feedback.pushInfo("Running least-squares adjustment...")

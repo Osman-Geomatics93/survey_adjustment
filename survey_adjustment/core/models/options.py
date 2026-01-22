@@ -14,13 +14,16 @@ class RobustEstimator(Enum):
     """
     Robust estimation methods for outlier handling.
 
-    These are planned for Phase 5 implementation.
+    Supported methods:
+    - NONE: Standard least squares (no robust estimation)
+    - HUBER: Huber's M-estimator (soft downweighting)
+    - DANISH: Danish method (aggressive downweighting)
+    - IGG3: IGG-III method (three-part with hard rejection)
     """
     NONE = "none"
-    HUBER = "huber"           # Huber's M-estimator
-    DANISH = "danish"         # Danish method
-    HAMPEL = "hampel"         # Hampel's M-estimator
-    IGGG3 = "iggg3"          # Institute of Geodesy method 3
+    HUBER = "huber"
+    DANISH = "danish"
+    IGG3 = "igg3"
 
 
 @dataclass
@@ -34,11 +37,19 @@ class AdjustmentOptions:
         confidence_level: Confidence level for statistical tests (default: 0.95)
         a_priori_variance: A priori variance of unit weight (default: 1.0)
         compute_covariances: Whether to compute full covariance matrix (default: True)
-        robust_estimator: Robust estimation method, None for standard LS (Phase 5)
+        robust_estimator: Robust estimation method, None for standard LS
         compute_error_ellipses: Whether to compute error ellipses (default: True)
         outlier_threshold: Standardized residual threshold for outlier detection (default: 3.0)
         angle_units_degrees: If True, expect angle input in degrees (default: True)
         sigma_units_arcseconds: If True, expect angular sigma in arc-seconds (default: False)
+
+        Robust estimation parameters (Phase 7A):
+        robust_max_iterations: Maximum IRLS iterations (default: 20)
+        robust_tol: Convergence tolerance for IRLS weight change (default: 1e-3)
+        huber_c: Huber tuning constant (default: 1.5)
+        danish_c: Danish tuning constant (default: 2.0)
+        igg3_k0: IGG-III lower threshold (default: 1.5)
+        igg3_k1: IGG-III upper threshold (default: 3.0)
     """
 
     max_iterations: int = 10
@@ -46,7 +57,7 @@ class AdjustmentOptions:
     confidence_level: float = 0.95
     a_priori_variance: float = 1.0
     compute_covariances: bool = True
-    robust_estimator: Optional[RobustEstimator] = None  # Phase 5
+    robust_estimator: Optional[RobustEstimator] = None
     compute_error_ellipses: bool = True
     # Phase 2 statistical settings
     alpha_local: float = 0.01  # local test significance (two-sided)
@@ -56,6 +67,14 @@ class AdjustmentOptions:
     outlier_threshold: float = 3.0
     angle_units_degrees: bool = True
     sigma_units_arcseconds: bool = False
+
+    # Robust estimation parameters (Phase 7A)
+    robust_max_iterations: int = 20
+    robust_tol: float = 1e-3
+    huber_c: float = 1.5
+    danish_c: float = 2.0
+    igg3_k0: float = 1.5
+    igg3_k1: float = 3.0
 
     def __post_init__(self):
         """Validate options after initialization."""
@@ -117,7 +136,14 @@ class AdjustmentOptions:
             "compute_reliability": self.compute_reliability,
             "outlier_threshold": self.outlier_threshold,
             "angle_units_degrees": self.angle_units_degrees,
-            "sigma_units_arcseconds": self.sigma_units_arcseconds
+            "sigma_units_arcseconds": self.sigma_units_arcseconds,
+            # Robust estimation parameters
+            "robust_max_iterations": self.robust_max_iterations,
+            "robust_tol": self.robust_tol,
+            "huber_c": self.huber_c,
+            "danish_c": self.danish_c,
+            "igg3_k0": self.igg3_k0,
+            "igg3_k1": self.igg3_k1,
         }
 
     @classmethod
@@ -150,7 +176,14 @@ class AdjustmentOptions:
             compute_reliability=data.get("compute_reliability", True),
             outlier_threshold=data.get("outlier_threshold", 3.0),
             angle_units_degrees=data.get("angle_units_degrees", True),
-            sigma_units_arcseconds=data.get("sigma_units_arcseconds", False)
+            sigma_units_arcseconds=data.get("sigma_units_arcseconds", False),
+            # Robust estimation parameters
+            robust_max_iterations=data.get("robust_max_iterations", 20),
+            robust_tol=data.get("robust_tol", 1e-3),
+            huber_c=data.get("huber_c", 1.5),
+            danish_c=data.get("danish_c", 2.0),
+            igg3_k0=data.get("igg3_k0", 1.5),
+            igg3_k1=data.get("igg3_k1", 3.0),
         )
 
     @classmethod

@@ -7,6 +7,9 @@ The leveling adjustment is a linear problem (no iteration required):
 - Residual: v = ΔH_obs - (H_to - H_from)
 - Unknown: heights of non-fixed points
 
+Supports robust estimation via IRLS (Iteratively Reweighted Least Squares)
+with Huber, Danish, and IGG-III weight functions.
+
 This module intentionally contains **no QGIS imports** so it can be unit-
 tested and re-used in non-QGIS contexts.
 """
@@ -22,9 +25,14 @@ except ImportError:  # pragma: no cover
     np = None  # type: ignore
 
 from ..models.network import Network
-from ..models.options import AdjustmentOptions
+from ..models.options import AdjustmentOptions, RobustEstimator
 from ..models.point import Point
 from ..models.observation import HeightDifferenceObservation
+from .robust import (
+    RobustMethod,
+    get_weight_function,
+    compute_robust_weights,
+)
 from ..results.adjustment_result import (
     AdjustmentResult,
     ResidualInfo,
@@ -74,6 +82,30 @@ def adjust_leveling_1d(
 
     if m == 0:
         return AdjustmentResult.failure("No enabled height difference observations")
+
+    # Robust estimation setup
+    robust_method = RobustMethod.NONE
+    if options.robust_estimator is not None:
+        if options.robust_estimator == RobustEstimator.HUBER:
+            robust_method = RobustMethod.HUBER
+        elif options.robust_estimator == RobustEstimator.DANISH:
+            robust_method = RobustMethod.DANISH
+        elif options.robust_estimator == RobustEstimator.IGG3:
+            robust_method = RobustMethod.IGG3
+
+    weight_func = get_weight_function(
+        robust_method,
+        huber_c=options.huber_c,
+        danish_c=options.danish_c,
+        igg3_k0=options.igg3_k0,
+        igg3_k1=options.igg3_k1,
+    )
+
+    # Initialize robust weights to 1.0
+    robust_weights = np.ones(m)
+    robust_converged = True
+    robust_iterations = 0
+    robust_message: Optional[str] = None
 
     # Build parameter index: map point_id -> parameter index for unknown heights
     param_index: Dict[str, int] = {}
@@ -127,35 +159,93 @@ def adjust_leveling_1d(
 
         sigmas[i] = obs.sigma
 
-    # Weight matrix (diagonal)
-    Pdiag = 1.0 / (sigmas ** 2)
+    # Base weight matrix (diagonal)
+    base_Pdiag = 1.0 / (sigmas ** 2)
 
-    # Normal equations: N = A^T P A, u = A^T P l
-    Aw = A * Pdiag[:, None]
-    N = A.T @ Aw
-    u = A.T @ (Pdiag * l)
+    # Outer IRLS loop (only if robust method is enabled)
+    max_irls = options.robust_max_iterations if robust_method != RobustMethod.NONE else 1
 
-    # Solve for corrections
-    try:
-        dx = np.linalg.solve(N, u)
-    except np.linalg.LinAlgError:
-        return AdjustmentResult.failure("Normal matrix is singular (datum definition issue)")
-
-    # Apply corrections to get adjusted heights
     adjusted_heights: Dict[str, float] = dict(heights)
-    for pid, idx in param_index.items():
-        adjusted_heights[pid] += dx[idx]
 
-    # Compute residuals
-    residuals = np.zeros(m, dtype=float)
-    computed_values = np.zeros(m, dtype=float)
+    for irls_iter in range(1, max_irls + 1):
+        # Reset adjusted heights for each IRLS iteration
+        adjusted_heights = dict(heights)
 
-    for i, obs in enumerate(leveling_obs):
-        from_pid = obs.from_point_id
-        to_pid = obs.to_point_id
-        computed_dh = adjusted_heights[to_pid] - adjusted_heights[from_pid]
-        computed_values[i] = computed_dh
-        residuals[i] = obs.value - computed_dh
+        # Apply robust weights to base weights
+        Pdiag = base_Pdiag * robust_weights
+
+        # Recompute misclosure with current heights
+        for i, obs in enumerate(leveling_obs):
+            computed_dh = adjusted_heights[obs.to_point_id] - adjusted_heights[obs.from_point_id]
+            l[i] = obs.value - computed_dh
+
+        # Normal equations: N = A^T P A, u = A^T P l
+        Aw = A * Pdiag[:, None]
+        N = A.T @ Aw
+        u = A.T @ (Pdiag * l)
+
+        # Solve for corrections
+        try:
+            dx = np.linalg.solve(N, u)
+        except np.linalg.LinAlgError:
+            return AdjustmentResult.failure("Normal matrix is singular (datum definition issue)")
+
+        # Apply corrections to get adjusted heights
+        for pid, idx in param_index.items():
+            adjusted_heights[pid] = heights[pid] + dx[idx]
+
+        # Compute residuals for IRLS update
+        residuals = np.zeros(m, dtype=float)
+        computed_values = np.zeros(m, dtype=float)
+
+        for i, obs in enumerate(leveling_obs):
+            from_pid = obs.from_point_id
+            to_pid = obs.to_point_id
+            computed_dh = adjusted_heights[to_pid] - adjusted_heights[from_pid]
+            computed_values[i] = computed_dh
+            residuals[i] = obs.value - computed_dh
+
+        # If robust estimation is enabled, update weights
+        if robust_method != RobustMethod.NONE and irls_iter < max_irls:
+            # Use a-priori sigma0 for IRLS to avoid masking effect where outliers
+            # inflate the a-posteriori sigma0 and prevent their own detection
+            sigma0_tmp = math.sqrt(max(options.a_priori_variance, 1e-30))
+
+            # Compute qvv for standardized residuals
+            try:
+                Qxx_tmp = np.linalg.solve(N, np.eye(n))
+                B_tmp = A @ Qxx_tmp
+                diag_AQAt = (B_tmp * A).sum(axis=1)
+                qvv_diag_tmp = (1.0 / Pdiag) - diag_AQAt
+                qvv_diag_tmp = np.maximum(qvv_diag_tmp, 1e-30)
+                std_res_tmp = residuals / (sigma0_tmp * np.sqrt(qvv_diag_tmp))
+            except np.linalg.LinAlgError:
+                std_res_tmp = residuals / (sigmas * sigma0_tmp)
+
+            # Compute new robust weights
+            new_robust_weights = compute_robust_weights(std_res_tmp, weight_func)
+
+            # Check IRLS convergence
+            weight_change = np.abs(new_robust_weights - robust_weights)
+            max_weight_change = np.max(weight_change)
+
+            robust_weights = new_robust_weights
+            robust_iterations = irls_iter
+
+            if max_weight_change < options.robust_tol:
+                robust_converged = True
+                robust_message = f"IRLS converged after {irls_iter} iterations"
+                break
+        else:
+            robust_iterations = irls_iter if robust_method != RobustMethod.NONE else 0
+            break
+
+    if robust_method != RobustMethod.NONE and robust_iterations >= max_irls:
+        robust_converged = False
+        robust_message = f"IRLS did not converge after {max_irls} iterations"
+
+    # Final computation with final robust weights
+    Pdiag = base_Pdiag * robust_weights
 
     # Statistics
     dof = m - n
@@ -266,6 +356,7 @@ def adjust_leveling_1d(
             flagged=is_flagged,
             from_point=obs.from_point_id,
             to_point=obs.to_point_id,
+            weight_factor=float(robust_weights[j]) if robust_method != RobustMethod.NONE else None,
         )
 
         std_residuals[obs.id] = float(std_vals[j])
@@ -305,4 +396,9 @@ def adjust_leveling_1d(
         error_ellipses={},  # Not applicable for 1D
         flagged_observations=flagged,
         network_name=network.name,
+        # Robust estimation fields (Phase 7A)
+        robust_method=robust_method.value if robust_method != RobustMethod.NONE else None,
+        robust_iterations=robust_iterations,
+        robust_converged=robust_converged,
+        robust_message=robust_message,
     )

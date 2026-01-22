@@ -13,6 +13,10 @@ The GNSS baseline adjustment is a linear problem (no iteration required):
 Each baseline contributes 3 equations with a 3x3 covariance matrix.
 Weight matrix P = C^-1 for each baseline block.
 
+Supports robust estimation via IRLS (Iteratively Reweighted Least Squares)
+with Huber, Danish, and IGG-III weight functions. For GNSS baselines with
+correlated components, robust weights are applied per-baseline.
+
 This module intentionally contains **no QGIS imports** so it can be unit-
 tested and re-used in non-QGIS contexts.
 """
@@ -28,9 +32,14 @@ except ImportError:  # pragma: no cover
     np = None  # type: ignore
 
 from ..models.network import Network
-from ..models.options import AdjustmentOptions
+from ..models.options import AdjustmentOptions, RobustEstimator
 from ..models.point import Point
 from ..models.observation import GnssBaselineObservation
+from .robust import (
+    RobustMethod,
+    get_weight_function,
+    compute_robust_weights,
+)
 from ..results.adjustment_result import (
     AdjustmentResult,
     ResidualInfo,
@@ -94,6 +103,30 @@ def adjust_gnss_3d(
         return AdjustmentResult.failure("No enabled GNSS baseline observations")
 
     m = 3 * num_baselines  # Total number of observation equations
+
+    # Robust estimation setup
+    robust_method = RobustMethod.NONE
+    if options.robust_estimator is not None:
+        if options.robust_estimator == RobustEstimator.HUBER:
+            robust_method = RobustMethod.HUBER
+        elif options.robust_estimator == RobustEstimator.DANISH:
+            robust_method = RobustMethod.DANISH
+        elif options.robust_estimator == RobustEstimator.IGG3:
+            robust_method = RobustMethod.IGG3
+
+    weight_func = get_weight_function(
+        robust_method,
+        huber_c=options.huber_c,
+        danish_c=options.danish_c,
+        igg3_k0=options.igg3_k0,
+        igg3_k1=options.igg3_k1,
+    )
+
+    # Initialize robust weights (one per baseline, not per component)
+    robust_weights = np.ones(num_baselines)
+    robust_converged = True
+    robust_iterations = 0
+    robust_message: Optional[str] = None
 
     # Build parameter index: map (point_id, component) -> parameter index
     # component: 0=E, 1=N, 2=H
@@ -194,53 +227,140 @@ def adjust_gnss_3d(
         l[row_base + 1] = obs.dN - computed_dN
         l[row_base + 2] = obs.dH - computed_dH
 
-    # Build full weight matrix P (block diagonal)
-    P_full = np.zeros((m, m), dtype=float)
-    for i, P_block in enumerate(weight_blocks):
-        row_base = 3 * i
-        P_full[row_base:row_base+3, row_base:row_base+3] = P_block
+    # Outer IRLS loop (only if robust method is enabled)
+    max_irls = options.robust_max_iterations if robust_method != RobustMethod.NONE else 1
 
-    # Normal equations: N = A^T P A, u = A^T P l
-    AtP = A.T @ P_full
-    N = AtP @ A
-    u = AtP @ l
-
-    # Solve for corrections
-    try:
-        dx = np.linalg.solve(N, u)
-    except np.linalg.LinAlgError:
-        return AdjustmentResult.failure("Normal matrix is singular (datum definition issue)")
-
-    # Apply corrections to get adjusted coordinates
     adjusted_coords: Dict[str, List[float]] = {}
-    for pid in gnss_point_ids:
-        e, n_coord, h = coords[pid]
-        adjusted_coords[pid] = [e, n_coord, h]
-
-    for (pid, comp), idx in param_index.items():
-        adjusted_coords[pid][comp] += dx[idx]
-
-    # Compute residuals
     residuals = np.zeros(m, dtype=float)
     computed_values = np.zeros((num_baselines, 3), dtype=float)
 
-    for i, obs in enumerate(gnss_obs):
-        from_pid = obs.from_point_id
-        to_pid = obs.to_point_id
+    for irls_iter in range(1, max_irls + 1):
+        # Reset adjusted coordinates
+        adjusted_coords = {}
+        for pid in gnss_point_ids:
+            e, n_coord, h = coords[pid]
+            adjusted_coords[pid] = [e, n_coord, h]
+
+        # Build full weight matrix P (block diagonal) with robust weights
+        P_full = np.zeros((m, m), dtype=float)
+        for i, P_block in enumerate(weight_blocks):
+            row_base = 3 * i
+            # Apply scalar robust weight to entire 3x3 block
+            P_full[row_base:row_base+3, row_base:row_base+3] = P_block * robust_weights[i]
+
+        # Recompute misclosure with current coordinates
+        for i, obs in enumerate(gnss_obs):
+            row_base = 3 * i
+            from_coords = adjusted_coords[obs.from_point_id]
+            to_coords = adjusted_coords[obs.to_point_id]
+            l[row_base + 0] = obs.dE - (to_coords[0] - from_coords[0])
+            l[row_base + 1] = obs.dN - (to_coords[1] - from_coords[1])
+            l[row_base + 2] = obs.dH - (to_coords[2] - from_coords[2])
+
+        # Normal equations: N = A^T P A, u = A^T P l
+        AtP = A.T @ P_full
+        N = AtP @ A
+        u = AtP @ l
+
+        # Solve for corrections
+        try:
+            dx = np.linalg.solve(N, u)
+        except np.linalg.LinAlgError:
+            return AdjustmentResult.failure("Normal matrix is singular (datum definition issue)")
+
+        # Apply corrections to get adjusted coordinates
+        for (pid, comp), idx in param_index.items():
+            adjusted_coords[pid][comp] = coords[pid][comp] + dx[idx]
+
+        # Compute residuals
+        for i, obs in enumerate(gnss_obs):
+            from_pid = obs.from_point_id
+            to_pid = obs.to_point_id
+            row_base = 3 * i
+
+            from_c = adjusted_coords[from_pid]
+            to_c = adjusted_coords[to_pid]
+
+            computed_dE = to_c[0] - from_c[0]
+            computed_dN = to_c[1] - from_c[1]
+            computed_dH = to_c[2] - from_c[2]
+
+            computed_values[i] = [computed_dE, computed_dN, computed_dH]
+
+            residuals[row_base + 0] = obs.dE - computed_dE
+            residuals[row_base + 1] = obs.dN - computed_dN
+            residuals[row_base + 2] = obs.dH - computed_dH
+
+        # If robust estimation is enabled, update weights
+        if robust_method != RobustMethod.NONE and irls_iter < max_irls:
+            # Use a-priori sigma0 for IRLS to avoid masking effect where outliers
+            # inflate the a-posteriori sigma0 and prevent their own detection
+            sigma0_tmp = math.sqrt(max(options.a_priori_variance, 1e-30))
+
+            # Compute standardized residuals per baseline (use max of components)
+            try:
+                Qxx_tmp = np.linalg.solve(N, np.eye(n))
+                B_tmp = A @ Qxx_tmp
+                diag_AQAt = (B_tmp * A).sum(axis=1)
+
+                # Build Qll diagonal
+                Qll_diag = np.zeros(m, dtype=float)
+                for i, C in enumerate(cov_blocks):
+                    row_base = 3 * i
+                    Qll_diag[row_base + 0] = C[0, 0]
+                    Qll_diag[row_base + 1] = C[1, 1]
+                    Qll_diag[row_base + 2] = C[2, 2]
+
+                qvv_diag_tmp = Qll_diag - diag_AQAt
+                qvv_diag_tmp = np.maximum(qvv_diag_tmp, 1e-30)
+
+                std_res_tmp = residuals / (sigma0_tmp * np.sqrt(qvv_diag_tmp))
+            except np.linalg.LinAlgError:
+                # Fallback: normalize by observation sigma
+                std_res_tmp = np.zeros(m)
+                for i, C in enumerate(cov_blocks):
+                    row_base = 3 * i
+                    std_res_tmp[row_base + 0] = residuals[row_base + 0] / (sigma0_tmp * math.sqrt(C[0, 0]))
+                    std_res_tmp[row_base + 1] = residuals[row_base + 1] / (sigma0_tmp * math.sqrt(C[1, 1]))
+                    std_res_tmp[row_base + 2] = residuals[row_base + 2] / (sigma0_tmp * math.sqrt(C[2, 2]))
+
+            # For each baseline, take the maximum standardized residual across components
+            baseline_std_res = np.zeros(num_baselines)
+            for i in range(num_baselines):
+                row_base = 3 * i
+                baseline_std_res[i] = max(
+                    abs(std_res_tmp[row_base + 0]),
+                    abs(std_res_tmp[row_base + 1]),
+                    abs(std_res_tmp[row_base + 2]),
+                )
+
+            # Compute new robust weights
+            new_robust_weights = compute_robust_weights(baseline_std_res, weight_func)
+
+            # Check IRLS convergence
+            weight_change = np.abs(new_robust_weights - robust_weights)
+            max_weight_change = np.max(weight_change)
+
+            robust_weights = new_robust_weights
+            robust_iterations = irls_iter
+
+            if max_weight_change < options.robust_tol:
+                robust_converged = True
+                robust_message = f"IRLS converged after {irls_iter} iterations"
+                break
+        else:
+            robust_iterations = irls_iter if robust_method != RobustMethod.NONE else 0
+            break
+
+    if robust_method != RobustMethod.NONE and robust_iterations >= max_irls:
+        robust_converged = False
+        robust_message = f"IRLS did not converge after {max_irls} iterations"
+
+    # Rebuild final weight matrix with final robust weights
+    P_full = np.zeros((m, m), dtype=float)
+    for i, P_block in enumerate(weight_blocks):
         row_base = 3 * i
-
-        from_coords = adjusted_coords[from_pid]
-        to_coords = adjusted_coords[to_pid]
-
-        computed_dE = to_coords[0] - from_coords[0]
-        computed_dN = to_coords[1] - from_coords[1]
-        computed_dH = to_coords[2] - from_coords[2]
-
-        computed_values[i] = [computed_dE, computed_dN, computed_dH]
-
-        residuals[row_base + 0] = obs.dE - computed_dE
-        residuals[row_base + 1] = obs.dN - computed_dN
-        residuals[row_base + 2] = obs.dH - computed_dH
+        P_full[row_base:row_base+3, row_base:row_base+3] = P_block * robust_weights[i]
 
     # Statistics
     dof = m - n
@@ -404,6 +524,7 @@ def adjust_gnss_3d(
             flagged=is_flagged,
             from_point=obs.from_point_id,
             to_point=obs.to_point_id,
+            weight_factor=float(robust_weights[i]) if robust_method != RobustMethod.NONE else None,
         )
 
         # Store additional component info as custom attributes
@@ -505,4 +626,9 @@ def adjust_gnss_3d(
         error_ellipses=error_ellipses,
         flagged_observations=flagged,
         network_name=network.name,
+        # Robust estimation fields (Phase 7A)
+        robust_method=robust_method.value if robust_method != RobustMethod.NONE else None,
+        robust_iterations=robust_iterations,
+        robust_converged=robust_converged,
+        robust_message=robust_message,
     )

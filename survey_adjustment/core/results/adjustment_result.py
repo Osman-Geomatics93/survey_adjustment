@@ -168,6 +168,7 @@ class ResidualInfo:
         residual: Residual (observed - computed)
         standardized_residual: Residual divided by its standard deviation
         flagged: True if observation is flagged as potential outlier
+        weight_factor: Robust weight factor (1.0 = full weight, <1.0 = downweighted)
     """
 
     obs_id: str
@@ -184,33 +185,24 @@ class ResidualInfo:
     from_point: Optional[str] = None
     to_point: Optional[str] = None
     at_point: Optional[str] = None
+    # Robust estimation (Phase 7A)
+    weight_factor: float | None = None
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize residual info to dictionary."""
         data = {
-
             "obs_id": self.obs_id,
-
             "obs_type": self.obs_type,
-
             "observed": _json_safe_value(self.observed),
-
             "computed": _json_safe_value(self.computed),
-
             "residual": _json_safe_value(self.residual),
-
             "standardized_residual": _json_safe_value(self.standardized_residual),
-
             "redundancy_number": _json_safe_value(self.redundancy_number),
-
             "mdb": _json_safe_value(self.mdb),
-
             "external_reliability": _json_safe_value(self.external_reliability),
-
             "is_outlier_candidate": self.is_outlier_candidate,
-
-            "flagged": self.flagged
-
+            "flagged": self.flagged,
+            "weight_factor": _json_safe_value(self.weight_factor),
         }
         if self.from_point:
             data["from_point"] = self.from_point
@@ -290,6 +282,12 @@ class AdjustmentResult:
     timestamp: Optional[str] = None
     plugin_version: str = "1.0.0"
     network_name: str = ""
+
+    # Robust estimation (Phase 7A)
+    robust_method: Optional[str] = None  # "none", "huber", "danish", "igg3"
+    robust_iterations: int = 0
+    robust_converged: bool = True
+    robust_message: Optional[str] = None
 
     def __post_init__(self):
         """Set timestamp if not provided."""
@@ -377,7 +375,12 @@ class AdjustmentResult:
                 "variance_factor": _json_safe_value(self.variance_factor),
                 "a_posteriori_sigma0": self.a_posteriori_sigma0,
                 "error_message": self.error_message,
-                "messages": self.messages
+                "messages": self.messages,
+                # Robust estimation
+                "robust_method": self.robust_method,
+                "robust_iterations": self.robust_iterations,
+                "robust_converged": self.robust_converged,
+                "robust_message": self.robust_message,
             },
             "global_test": self.chi_square_test.to_dict() if self.chi_square_test else None,
             "adjusted_points": [
@@ -463,7 +466,8 @@ class AdjustmentResult:
                 flagged=res_data.get("flagged", False),
                 from_point=res_data.get("from_point"),
                 to_point=res_data.get("to_point"),
-                at_point=res_data.get("at_point")
+                at_point=res_data.get("at_point"),
+                weight_factor=res_data.get("weight_factor"),
             ))
 
         # Build error ellipses
@@ -496,7 +500,12 @@ class AdjustmentResult:
             error_message=adjustment.get("error_message"),
             timestamp=metadata.get("timestamp"),
             plugin_version=metadata.get("plugin_version", "1.0.0"),
-            network_name=metadata.get("network_name", "")
+            network_name=metadata.get("network_name", ""),
+            # Robust estimation
+            robust_method=adjustment.get("robust_method"),
+            robust_iterations=adjustment.get("robust_iterations", 0),
+            robust_converged=adjustment.get("robust_converged", True),
+            robust_message=adjustment.get("robust_message"),
         )
 
     @classmethod

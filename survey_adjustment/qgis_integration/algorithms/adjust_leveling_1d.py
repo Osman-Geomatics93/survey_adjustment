@@ -18,6 +18,7 @@ try:  # pragma: no cover
         QgsProcessingParameterFileDestination,
         QgsProcessingParameterNumber,
         QgsProcessingParameterBoolean,
+        QgsProcessingParameterEnum,
         QgsProcessingParameterFeatureSink,
         QgsProcessingException,
         QgsFields,
@@ -44,6 +45,7 @@ except Exception:  # pragma: no cover
     QgsProcessingParameterFileDestination = object  # type: ignore
     QgsProcessingParameterNumber = object  # type: ignore
     QgsProcessingParameterBoolean = object  # type: ignore
+    QgsProcessingParameterEnum = object  # type: ignore
     QgsProcessingParameterFeatureSink = object  # type: ignore
     QgsProcessingException = RuntimeError
     QgsFields = object  # type: ignore
@@ -77,6 +79,11 @@ class AdjustLeveling1DAlgorithm(QgsProcessingAlgorithm):
 
     SIGMA_UNIT = "SIGMA_UNIT"
     COMPUTE_RELIABILITY = "COMPUTE_RELIABILITY"
+    ROBUST_METHOD = "ROBUST_METHOD"
+
+    # Robust method options mapping
+    ROBUST_OPTIONS = ["None (Standard LS)", "Huber", "Danish", "IGG-III"]
+    ROBUST_VALUES = [None, "huber", "danish", "igg3"]
 
     # Output parameters
     OUTPUT_JSON = "OUTPUT_JSON"
@@ -136,6 +143,12 @@ class AdjustLeveling1DAlgorithm(QgsProcessingAlgorithm):
             self.COMPUTE_RELIABILITY,
             "Compute reliability measures",
             defaultValue=True,
+        ))
+        self.addParameter(QgsProcessingParameterEnum(
+            self.ROBUST_METHOD,
+            "Robust estimation method",
+            options=self.ROBUST_OPTIONS,
+            defaultValue=0,  # None (Standard LS)
         ))
 
         # Report outputs
@@ -202,6 +215,8 @@ class AdjustLeveling1DAlgorithm(QgsProcessingAlgorithm):
 
         sigma_in_mm = self.parameterAsBool(parameters, self.SIGMA_UNIT, context)
         compute_reliability = self.parameterAsBool(parameters, self.COMPUTE_RELIABILITY, context)
+        robust_idx = self.parameterAsEnum(parameters, self.ROBUST_METHOD, context)
+        robust_method = self.ROBUST_VALUES[robust_idx]
 
         out_json = self.parameterAsFileOutput(parameters, self.OUTPUT_JSON, context)
         out_html = self.parameterAsFileOutput(parameters, self.OUTPUT_HTML, context)
@@ -224,9 +239,19 @@ class AdjustLeveling1DAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo(f"Network: {len(net.points)} points, {len(hdiff_obs)} height differences")
 
         # Configure options
+        from ...core.models.options import RobustEstimator
+        robust_enum = None
+        if robust_method == "huber":
+            robust_enum = RobustEstimator.HUBER
+        elif robust_method == "danish":
+            robust_enum = RobustEstimator.DANISH
+        elif robust_method == "igg3":
+            robust_enum = RobustEstimator.IGG3
+
         options = AdjustmentOptions(
             max_iterations=1,  # Linear problem
             compute_reliability=compute_reliability,
+            robust_estimator=robust_enum,
         )
 
         # Run adjustment

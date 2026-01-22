@@ -137,12 +137,17 @@ def render_html_report(result: AdjustmentResult, title: str | None = None) -> st
     parts.append("</head><body>")
 
     parts.append(f"<h1>{esc(title)}</h1>")
-    parts.append(
-        f"<div class='meta'>Success: <span class='{'ok' if result.success else 'bad'}'>{esc(result.success)}</span> | "
-        f"Converged: <span class='{'ok' if result.converged else 'bad'}'>{esc(result.converged)}</span> | "
-        f"Iterations: {esc(result.iterations)} | DOF: {esc(result.degrees_of_freedom)} | "
-        f"σ₀²: {esc(result.variance_factor):s}</div>"
-    )
+    meta_parts = [
+        f"Success: <span class='{'ok' if result.success else 'bad'}'>{esc(result.success)}</span>",
+        f"Converged: <span class='{'ok' if result.converged else 'bad'}'>{esc(result.converged)}</span>",
+        f"Iterations: {esc(result.iterations)}",
+        f"DOF: {esc(result.degrees_of_freedom)}",
+        f"σ₀²: {esc(result.variance_factor):s}",
+    ]
+    # Add robust estimation info if enabled
+    if result.robust_method:
+        meta_parts.append(f"Robust: {esc(result.robust_method.upper())}")
+    parts.append(f"<div class='meta'>{' | '.join(meta_parts)}</div>")
 
     if result.chi_square_test is not None:
         c = result.chi_square_test
@@ -158,6 +163,31 @@ def render_html_report(result: AdjustmentResult, title: str | None = None) -> st
             f"<td class='{'ok' if c.passed else 'bad'}'>{esc(c.passed)}</td>"
             "</tr>"
         )
+        parts.append("</tbody></table>")
+
+    # Robust estimation section
+    if result.robust_method:
+        parts.append("<h2>Robust Estimation</h2>")
+        parts.append("<table><thead><tr><th>Parameter</th><th>Value</th></tr></thead><tbody>")
+        parts.append(f"<tr><td>Method</td><td>{esc(result.robust_method.upper())}</td></tr>")
+        parts.append(f"<tr><td>IRLS Iterations</td><td>{esc(result.robust_iterations)}</td></tr>")
+        converged_class = 'ok' if result.robust_converged else 'bad'
+        parts.append(f"<tr><td>Converged</td><td class='{converged_class}'>{esc(result.robust_converged)}</td></tr>")
+        if result.robust_message:
+            parts.append(f"<tr><td>Message</td><td>{esc(result.robust_message)}</td></tr>")
+
+        # Count downweighted observations
+        downweighted_count = 0
+        min_weight = 1.0
+        for r in result.residual_details:
+            if r.weight_factor is not None and r.weight_factor < 0.999:
+                downweighted_count += 1
+                if r.weight_factor < min_weight:
+                    min_weight = r.weight_factor
+
+        parts.append(f"<tr><td>Downweighted Observations</td><td>{downweighted_count}</td></tr>")
+        if downweighted_count > 0:
+            parts.append(f"<tr><td>Minimum Weight Factor</td><td>{min_weight:.4f}</td></tr>")
         parts.append("</tbody></table>")
 
     parts.append("<h2>Adjusted Points</h2>")
@@ -226,63 +256,67 @@ def render_html_report(result: AdjustmentResult, title: str | None = None) -> st
         parts.append("</tbody></table>")
 
     parts.append("<h2>Residuals</h2>")
+    has_robust = result.robust_method is not None
     if is_leveling:
         # Leveling residuals with from/to columns
-        parts.append(
-            "<table><thead><tr>"
-            "<th>ID</th><th>From</th><th>To</th><th>ΔH obs</th><th>ΔH comp</th><th>v (mm)</th><th>w</th>"
-            "<th>r</th><th>MDB</th><th>Ext.Rel.</th><th>Flag</th>"
-            "</tr></thead><tbody>"
-        )
+        header = "<th>ID</th><th>From</th><th>To</th><th>ΔH obs</th><th>ΔH comp</th><th>v (mm)</th><th>w</th><th>r</th><th>MDB</th><th>Ext.Rel.</th>"
+        if has_robust:
+            header += "<th>u</th>"
+        header += "<th>Flag</th>"
+        parts.append(f"<table><thead><tr>{header}</tr></thead><tbody>")
         for r in result.residual_details:
             cls = "flag" if (r.flagged or r.is_outlier_candidate) else ""
             v_mm = r.residual * 1000 if r.residual is not None else None
             r_val = f"{r.redundancy_number:.3f}" if r.redundancy_number is not None else "-"
             mdb_val = f"{r.mdb:.4f}" if r.mdb is not None and math.isfinite(r.mdb) else "-"
             ext_val = f"{r.external_reliability:.4f}" if r.external_reliability is not None and math.isfinite(r.external_reliability) else "-"
-            parts.append(
+            row = (
                 f"<tr class='{cls}'>"
                 f"<td>{esc(r.obs_id)}</td>"
                 f"<td>{esc(r.from_point or '')}</td><td>{esc(r.to_point or '')}</td>"
                 f"<td>{r.observed:.4f}</td><td>{r.computed:.4f}</td>"
                 f"<td>{v_mm:.2f}</td><td>{r.standardized_residual:.3f}</td>"
                 f"<td>{r_val}</td><td>{mdb_val}</td><td>{ext_val}</td>"
-                f"<td>{'⚑' if (r.flagged or r.is_outlier_candidate) else ''}</td>"
-                "</tr>"
             )
+            if has_robust:
+                u_val = f"{r.weight_factor:.4f}" if r.weight_factor is not None else "-"
+                row += f"<td>{u_val}</td>"
+            row += f"<td>{'⚑' if (r.flagged or r.is_outlier_candidate) else ''}</td></tr>"
+            parts.append(row)
         parts.append("</tbody></table>")
     elif is_gnss:
         # GNSS baseline residuals with from/to and 3D residual
-        parts.append(
-            "<table><thead><tr>"
-            "<th>ID</th><th>From</th><th>To</th><th>Length (m)</th><th>|v| (mm)</th><th>w_max</th>"
-            "<th>r</th><th>Flag</th>"
-            "</tr></thead><tbody>"
-        )
+        header = "<th>ID</th><th>From</th><th>To</th><th>Length (m)</th><th>|v| (mm)</th><th>w_max</th><th>r</th>"
+        if has_robust:
+            header += "<th>u</th>"
+        header += "<th>Flag</th>"
+        parts.append(f"<table><thead><tr>{header}</tr></thead><tbody>")
         for r in result.residual_details:
             cls = "flag" if (r.flagged or r.is_outlier_candidate) else ""
             v_mm = r.residual * 1000 if r.residual is not None else None
             r_val = f"{r.redundancy_number:.3f}" if r.redundancy_number is not None else "-"
             w_val = f"{r.standardized_residual:.3f}" if r.standardized_residual is not None else "-"
-            parts.append(
+            row = (
                 f"<tr class='{cls}'>"
                 f"<td>{esc(r.obs_id)}</td>"
                 f"<td>{esc(r.from_point or '')}</td><td>{esc(r.to_point or '')}</td>"
                 f"<td>{r.observed:.3f}</td>"
                 f"<td>{v_mm:.2f}</td><td>{w_val}</td>"
                 f"<td>{r_val}</td>"
-                f"<td>{'⚑' if (r.flagged or r.is_outlier_candidate) else ''}</td>"
-                "</tr>"
             )
+            if has_robust:
+                u_val = f"{r.weight_factor:.4f}" if r.weight_factor is not None else "-"
+                row += f"<td>{u_val}</td>"
+            row += f"<td>{'⚑' if (r.flagged or r.is_outlier_candidate) else ''}</td></tr>"
+            parts.append(row)
         parts.append("</tbody></table>")
     elif is_mixed:
         # Mixed residuals: classical (scalar), GNSS (3D), and leveling (scalar) in one table
-        parts.append(
-            "<table><thead><tr>"
-            "<th>ID</th><th>Type</th><th>From</th><th>To</th><th>Obs/Length</th><th>v/|v| (mm)</th><th>w</th>"
-            "<th>r</th><th>Flag</th>"
-            "</tr></thead><tbody>"
-        )
+        header = "<th>ID</th><th>Type</th><th>From</th><th>To</th><th>Obs/Length</th><th>v/|v| (mm)</th><th>w</th><th>r</th>"
+        if has_robust:
+            header += "<th>u</th>"
+        header += "<th>Flag</th>"
+        parts.append(f"<table><thead><tr>{header}</tr></thead><tbody>")
         for r in result.residual_details:
             cls = "flag" if (r.flagged or r.is_outlier_candidate) else ""
             r_val = f"{r.redundancy_number:.3f}" if r.redundancy_number is not None else "-"
@@ -311,7 +345,7 @@ def render_html_report(result: AdjustmentResult, title: str | None = None) -> st
                 else:
                     v_str = "-"
 
-            parts.append(
+            row = (
                 f"<tr class='{cls}'>"
                 f"<td>{esc(r.obs_id)}</td>"
                 f"<td>{esc(r.obs_type)}</td>"
@@ -320,29 +354,34 @@ def render_html_report(result: AdjustmentResult, title: str | None = None) -> st
                 f"<td>{obs_val}</td>"
                 f"<td>{v_str}</td><td>{w_val}</td>"
                 f"<td>{r_val}</td>"
-                f"<td>{'⚑' if (r.flagged or r.is_outlier_candidate) else ''}</td>"
-                "</tr>"
             )
+            if has_robust:
+                u_val = f"{r.weight_factor:.4f}" if r.weight_factor is not None else "-"
+                row += f"<td>{u_val}</td>"
+            row += f"<td>{'⚑' if (r.flagged or r.is_outlier_candidate) else ''}</td></tr>"
+            parts.append(row)
         parts.append("</tbody></table>")
     else:
         # 2D residuals
-        parts.append(
-            "<table><thead><tr>"
-            "<th>ID</th><th>Type</th><th>Observed</th><th>Computed</th><th>v</th><th>w</th>"
-            "<th>Redundancy</th><th>MDB</th><th>Ext.Rel.</th><th>Flag</th>"
-            "</tr></thead><tbody>"
-        )
+        header = "<th>ID</th><th>Type</th><th>Observed</th><th>Computed</th><th>v</th><th>w</th><th>Redundancy</th><th>MDB</th><th>Ext.Rel.</th>"
+        if has_robust:
+            header += "<th>u</th>"
+        header += "<th>Flag</th>"
+        parts.append(f"<table><thead><tr>{header}</tr></thead><tbody>")
         for r in result.residual_details:
             cls = "flag" if (r.flagged or r.is_outlier_candidate) else ""
-            parts.append(
+            row = (
                 f"<tr class='{cls}'>"
                 f"<td>{esc(r.obs_id)}</td><td>{esc(r.obs_type)}</td>"
                 f"<td>{esc(r.observed)}</td><td>{esc(r.computed)}</td>"
                 f"<td>{esc(r.residual)}</td><td>{esc(r.standardized_residual)}</td>"
                 f"<td>{esc(r.redundancy_number)}</td><td>{esc(r.mdb)}</td><td>{esc(r.external_reliability)}</td>"
-                f"<td>{'⚑' if (r.flagged or r.is_outlier_candidate) else ''}</td>"
-                "</tr>"
             )
+            if has_robust:
+                u_val = f"{r.weight_factor:.4f}" if r.weight_factor is not None else "-"
+                row += f"<td>{u_val}</td>"
+            row += f"<td>{'⚑' if (r.flagged or r.is_outlier_candidate) else ''}</td></tr>"
+            parts.append(row)
         parts.append("</tbody></table>")
 
     if result.messages:

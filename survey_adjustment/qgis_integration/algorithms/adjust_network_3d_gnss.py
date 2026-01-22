@@ -81,6 +81,11 @@ class AdjustNetwork3DGnssAlgorithm(QgsProcessingAlgorithm):
 
     COVARIANCE_FORMAT = "COVARIANCE_FORMAT"
     COMPUTE_RELIABILITY = "COMPUTE_RELIABILITY"
+    ROBUST_METHOD = "ROBUST_METHOD"
+
+    # Robust method options mapping
+    ROBUST_OPTIONS = ["None (Standard LS)", "Huber", "Danish", "IGG-III"]
+    ROBUST_VALUES = [None, "huber", "danish", "igg3"]
 
     # Output parameters
     OUTPUT_JSON = "OUTPUT_JSON"
@@ -143,6 +148,12 @@ class AdjustNetwork3DGnssAlgorithm(QgsProcessingAlgorithm):
             self.COMPUTE_RELIABILITY,
             "Compute reliability measures",
             defaultValue=True,
+        ))
+        self.addParameter(QgsProcessingParameterEnum(
+            self.ROBUST_METHOD,
+            "Robust estimation method",
+            options=self.ROBUST_OPTIONS,
+            defaultValue=0,  # None (Standard LS)
         ))
 
         # Report outputs
@@ -232,6 +243,8 @@ class AdjustNetwork3DGnssAlgorithm(QgsProcessingAlgorithm):
         cov_format_idx = self.parameterAsInt(parameters, self.COVARIANCE_FORMAT, context)
         cov_format = "sigmas_corr" if cov_format_idx == 1 else "full"
         compute_reliability = self.parameterAsBool(parameters, self.COMPUTE_RELIABILITY, context)
+        robust_idx = self.parameterAsEnum(parameters, self.ROBUST_METHOD, context)
+        robust_method = self.ROBUST_VALUES[robust_idx]
 
         out_json = self.parameterAsFileOutput(parameters, self.OUTPUT_JSON, context)
         out_html = self.parameterAsFileOutput(parameters, self.OUTPUT_HTML, context)
@@ -251,9 +264,19 @@ class AdjustNetwork3DGnssAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo(f"Network: {len(net.points)} points, {len(baselines)} baselines")
 
         # Configure options
+        from ...core.models.options import RobustEstimator
+        robust_enum = None
+        if robust_method == "huber":
+            robust_enum = RobustEstimator.HUBER
+        elif robust_method == "danish":
+            robust_enum = RobustEstimator.DANISH
+        elif robust_method == "igg3":
+            robust_enum = RobustEstimator.IGG3
+
         options = AdjustmentOptions(
             max_iterations=1,  # Linear problem
             compute_reliability=compute_reliability,
+            robust_estimator=robust_enum,
         )
 
         # Run adjustment

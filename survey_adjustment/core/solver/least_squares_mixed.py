@@ -15,6 +15,9 @@ This solver handles mixed observation types in a single adjustment:
 The adjustment is iterative (Gauss-Newton) due to non-linear direction/angle
 observations. GNSS baselines and leveling are linear but included in the same solve.
 
+Supports robust estimation via IRLS (Iteratively Reweighted Least Squares)
+with Huber, Danish, and IGG-III weight functions.
+
 This module intentionally contains **no QGIS imports** so it can be unit-
 tested and re-used in non-QGIS contexts.
 """
@@ -31,8 +34,13 @@ except ImportError:  # pragma: no cover
     np = None  # type: ignore
 
 from ..models.network import Network
-from ..models.options import AdjustmentOptions
+from ..models.options import AdjustmentOptions, RobustEstimator
 from ..models.point import Point
+from .robust import (
+    RobustMethod,
+    get_weight_function,
+    compute_robust_weights,
+)
 from ..models.observation import (
     Observation,
     DistanceObservation,
@@ -276,6 +284,32 @@ def adjust_network_mixed(
             if p.height is None:
                 return AdjustmentResult.failure(f"Point '{pid}' has no height value (required for GNSS/leveling)")
 
+    # Robust estimation setup
+    robust_method = RobustMethod.NONE
+    if options.robust_estimator is not None:
+        if options.robust_estimator == RobustEstimator.HUBER:
+            robust_method = RobustMethod.HUBER
+        elif options.robust_estimator == RobustEstimator.DANISH:
+            robust_method = RobustMethod.DANISH
+        elif options.robust_estimator == RobustEstimator.IGG3:
+            robust_method = RobustMethod.IGG3
+
+    weight_func = get_weight_function(
+        robust_method,
+        huber_c=options.huber_c,
+        danish_c=options.danish_c,
+        igg3_k0=options.igg3_k0,
+        igg3_k1=options.igg3_k1,
+    )
+
+    # Initialize robust weights for each observation type
+    robust_weights_classical = np.ones(m_classical) if m_classical > 0 else np.array([])
+    robust_weights_gnss = np.ones(len(gnss_obs)) if len(gnss_obs) > 0 else np.array([])  # One per baseline
+    robust_weights_leveling = np.ones(m_leveling) if m_leveling > 0 else np.array([])
+    robust_converged = True
+    robust_iterations = 0
+    robust_message: Optional[str] = None
+
     # Build initial state
     state = _State(
         points={
@@ -305,76 +339,226 @@ def adjust_network_mixed(
             )
         gnss_weight_blocks.append(P)
 
-    # Iterative adjustment (Gauss-Newton)
-    for it in range(1, options.max_iterations + 1):
-        # Build design matrix and misclosure
-        A, w, sigmas_classical, computed_classical, sigmas_leveling, computed_leveling = _linearize_mixed(
-            classical_obs, gnss_obs, leveling_obs, state, index, m, n, m_classical, m_gnss, m_leveling
-        )
+    # Outer IRLS loop (only if robust method is enabled)
+    max_irls = options.robust_max_iterations if robust_method != RobustMethod.NONE else 1
 
-        # Build normal equations with mixed weighting
-        # For classical: diagonal weights (1/sigma^2)
-        # For GNSS: block weights (P = C^-1)
-        # For leveling: diagonal weights (1/sigma^2)
-
-        N = np.zeros((n, n), dtype=float)
-        u = np.zeros(n, dtype=float)
-
-        # Classical contribution (rows 0 to m_classical-1)
-        if m_classical > 0:
-            A_c = A[:m_classical, :]
-            w_c = w[:m_classical]
-            weights_c = 1.0 / (sigmas_classical ** 2)
-
-            Aw_c = A_c * weights_c[:, None]
-            N += A_c.T @ Aw_c
-            u += A_c.T @ (weights_c * w_c)
-
-        # GNSS contribution (rows m_classical to m_classical + m_gnss - 1)
-        if m_gnss > 0:
-            for i, P_block in enumerate(gnss_weight_blocks):
-                row_base = m_classical + 3 * i
-                A_g = A[row_base:row_base+3, :]
-                l_g = w[row_base:row_base+3]
-
-                # N += A_g^T @ P @ A_g
-                AtP = A_g.T @ P_block
-                N += AtP @ A_g
-                u += AtP @ l_g
-
-        # Leveling contribution (rows m_classical + m_gnss to m - 1)
-        if m_leveling > 0:
-            row_start = m_classical + m_gnss
-            A_l = A[row_start:row_start + m_leveling, :]
-            w_l = w[row_start:row_start + m_leveling]
-            weights_l = 1.0 / (sigmas_leveling ** 2)
-
-            Aw_l = A_l * weights_l[:, None]
-            N += A_l.T @ Aw_l
-            u += A_l.T @ (weights_l * w_l)
-
-        # Solve normal equations
-        try:
-            dx = np.linalg.solve(N, u)
-        except np.linalg.LinAlgError:
-            return AdjustmentResult.failure(
-                "Normal matrix is singular (datum definition / geometry issue)"
+    for irls_iter in range(1, max_irls + 1):
+        # Reset state for each IRLS iteration
+        if irls_iter > 1:
+            state = _State(
+                points={
+                    pid: (p.easting, p.northing, p.height if p.height is not None else 0.0)
+                    for pid, p in network.points.items()
+                },
+                orientations={set_id: 0.0 for set_id in index.orientation_order},
             )
 
-        # Apply corrections
-        _apply_corrections_mixed(state, index, dx)
+        converged = False
 
-        # Convergence check
-        coord_max = 0.0
-        for (pid, comp), idxp in index.coord_index.items():
-            coord_max = max(coord_max, abs(dx[idxp]))
-        orient_max = 0.0
-        for set_id, idxo in index.orientation_index.items():
-            orient_max = max(orient_max, abs(dx[idxo]))
+        # Iterative adjustment (Gauss-Newton)
+        for it in range(1, options.max_iterations + 1):
+            # Build design matrix and misclosure
+            A, w, sigmas_classical, computed_classical, sigmas_leveling, computed_leveling = _linearize_mixed(
+                classical_obs, gnss_obs, leveling_obs, state, index, m, n, m_classical, m_gnss, m_leveling
+            )
 
-        if coord_max <= options.convergence_threshold and orient_max <= orient_tol:
-            converged = True
+            # Build normal equations with mixed weighting (including robust weights)
+            # For classical: diagonal weights (1/sigma^2) * robust_weight
+            # For GNSS: block weights (P = C^-1) * robust_weight
+            # For leveling: diagonal weights (1/sigma^2) * robust_weight
+
+            N = np.zeros((n, n), dtype=float)
+            u = np.zeros(n, dtype=float)
+
+            # Classical contribution (rows 0 to m_classical-1)
+            if m_classical > 0:
+                A_c = A[:m_classical, :]
+                w_c = w[:m_classical]
+                base_weights_c = 1.0 / (sigmas_classical ** 2)
+                weights_c = base_weights_c * robust_weights_classical
+
+                Aw_c = A_c * weights_c[:, None]
+                N += A_c.T @ Aw_c
+                u += A_c.T @ (weights_c * w_c)
+
+            # GNSS contribution (rows m_classical to m_classical + m_gnss - 1)
+            if m_gnss > 0:
+                for i, P_block in enumerate(gnss_weight_blocks):
+                    row_base = m_classical + 3 * i
+                    A_g = A[row_base:row_base+3, :]
+                    l_g = w[row_base:row_base+3]
+
+                    # Apply scalar robust weight to entire 3x3 block
+                    P_weighted = P_block * robust_weights_gnss[i]
+
+                    # N += A_g^T @ P @ A_g
+                    AtP = A_g.T @ P_weighted
+                    N += AtP @ A_g
+                    u += AtP @ l_g
+
+            # Leveling contribution (rows m_classical + m_gnss to m - 1)
+            if m_leveling > 0:
+                row_start = m_classical + m_gnss
+                A_l = A[row_start:row_start + m_leveling, :]
+                w_l = w[row_start:row_start + m_leveling]
+                base_weights_l = 1.0 / (sigmas_leveling ** 2)
+                weights_l = base_weights_l * robust_weights_leveling
+
+                Aw_l = A_l * weights_l[:, None]
+                N += A_l.T @ Aw_l
+                u += A_l.T @ (weights_l * w_l)
+
+            # Solve normal equations
+            try:
+                dx = np.linalg.solve(N, u)
+            except np.linalg.LinAlgError:
+                return AdjustmentResult.failure(
+                    "Normal matrix is singular (datum definition / geometry issue)"
+                )
+
+            # Apply corrections
+            _apply_corrections_mixed(state, index, dx)
+
+            # Convergence check
+            coord_max = 0.0
+            for (pid, comp), idxp in index.coord_index.items():
+                coord_max = max(coord_max, abs(dx[idxp]))
+            orient_max = 0.0
+            for set_id, idxo in index.orientation_index.items():
+                orient_max = max(orient_max, abs(dx[idxo]))
+
+            if coord_max <= options.convergence_threshold and orient_max <= orient_tol:
+                converged = True
+                break
+
+        # After G-N convergence, update robust weights if enabled
+        if robust_method != RobustMethod.NONE and irls_iter < max_irls:
+            # Recompute for standardized residuals
+            A_tmp, w_tmp, sigmas_c_tmp, _, sigmas_l_tmp, _ = _linearize_mixed(
+                classical_obs, gnss_obs, leveling_obs, state, index, m, n, m_classical, m_gnss, m_leveling
+            )
+            residuals_tmp = w_tmp
+
+            # Build full Pdiag with robust weights
+            Pdiag_tmp = np.zeros(m, dtype=float)
+            if m_classical > 0:
+                Pdiag_tmp[:m_classical] = (1.0 / (sigmas_c_tmp ** 2)) * robust_weights_classical
+            for i, P_block in enumerate(gnss_weight_blocks):
+                row_base = m_classical + 3 * i
+                Pdiag_tmp[row_base + 0] = P_block[0, 0] * robust_weights_gnss[i]
+                Pdiag_tmp[row_base + 1] = P_block[1, 1] * robust_weights_gnss[i]
+                Pdiag_tmp[row_base + 2] = P_block[2, 2] * robust_weights_gnss[i]
+            if m_leveling > 0:
+                row_start = m_classical + m_gnss
+                Pdiag_tmp[row_start:row_start + m_leveling] = (1.0 / (sigmas_l_tmp ** 2)) * robust_weights_leveling
+
+            vTPv_tmp = float((residuals_tmp * residuals_tmp * Pdiag_tmp).sum())
+            # Add GNSS cross-terms
+            for i, P_block in enumerate(gnss_weight_blocks):
+                row_base = m_classical + 3 * i
+                v_g = residuals_tmp[row_base:row_base+3]
+                vTPv_tmp += float(v_g @ P_block @ v_g) * robust_weights_gnss[i] - \
+                           float((v_g * v_g * np.diag(P_block)).sum()) * robust_weights_gnss[i]
+
+            # Use a-priori sigma0 for IRLS to avoid masking effect where outliers
+            # inflate the a-posteriori sigma0 and prevent their own detection
+            sigma0_tmp = math.sqrt(max(options.a_priori_variance, 1e-30))
+
+            # Compute standardized residuals
+            try:
+                # Rebuild N with robust weights
+                N_tmp = np.zeros((n, n), dtype=float)
+                if m_classical > 0:
+                    A_c = A_tmp[:m_classical, :]
+                    weights_c = (1.0 / (sigmas_c_tmp ** 2)) * robust_weights_classical
+                    N_tmp += (A_c.T * weights_c) @ A_c
+                for i, P_block in enumerate(gnss_weight_blocks):
+                    row_base = m_classical + 3 * i
+                    A_g = A_tmp[row_base:row_base+3, :]
+                    N_tmp += A_g.T @ (P_block * robust_weights_gnss[i]) @ A_g
+                if m_leveling > 0:
+                    row_start = m_classical + m_gnss
+                    A_l = A_tmp[row_start:row_start + m_leveling, :]
+                    weights_l = (1.0 / (sigmas_l_tmp ** 2)) * robust_weights_leveling
+                    N_tmp += (A_l.T * weights_l) @ A_l
+
+                Qxx_tmp = np.linalg.solve(N_tmp, np.eye(n))
+                B_tmp = A_tmp @ Qxx_tmp
+                diag_AQAt = (B_tmp * A_tmp).sum(axis=1)
+
+                # Build Qll diagonal
+                Qll_diag = np.zeros(m, dtype=float)
+                if m_classical > 0:
+                    Qll_diag[:m_classical] = sigmas_c_tmp ** 2
+                for i, C in enumerate(gnss_cov_blocks):
+                    row_base = m_classical + 3 * i
+                    Qll_diag[row_base + 0] = C[0, 0]
+                    Qll_diag[row_base + 1] = C[1, 1]
+                    Qll_diag[row_base + 2] = C[2, 2]
+                if m_leveling > 0:
+                    row_start = m_classical + m_gnss
+                    Qll_diag[row_start:row_start + m_leveling] = sigmas_l_tmp ** 2
+
+                qvv_diag_tmp = Qll_diag - diag_AQAt
+                qvv_diag_tmp = np.maximum(qvv_diag_tmp, 1e-30)
+                std_res_tmp = residuals_tmp / (sigma0_tmp * np.sqrt(qvv_diag_tmp))
+            except np.linalg.LinAlgError:
+                # Fallback
+                std_res_tmp = np.zeros(m)
+                if m_classical > 0:
+                    std_res_tmp[:m_classical] = residuals_tmp[:m_classical] / (sigmas_c_tmp * sigma0_tmp)
+                for i, C in enumerate(gnss_cov_blocks):
+                    row_base = m_classical + 3 * i
+                    std_res_tmp[row_base + 0] = residuals_tmp[row_base + 0] / (math.sqrt(C[0, 0]) * sigma0_tmp)
+                    std_res_tmp[row_base + 1] = residuals_tmp[row_base + 1] / (math.sqrt(C[1, 1]) * sigma0_tmp)
+                    std_res_tmp[row_base + 2] = residuals_tmp[row_base + 2] / (math.sqrt(C[2, 2]) * sigma0_tmp)
+                if m_leveling > 0:
+                    row_start = m_classical + m_gnss
+                    std_res_tmp[row_start:row_start + m_leveling] = residuals_tmp[row_start:row_start + m_leveling] / (sigmas_l_tmp * sigma0_tmp)
+
+            # Update robust weights
+            max_weight_change = 0.0
+
+            # Classical
+            if m_classical > 0:
+                new_weights_c = compute_robust_weights(std_res_tmp[:m_classical], weight_func)
+                max_weight_change = max(max_weight_change, np.max(np.abs(new_weights_c - robust_weights_classical)))
+                robust_weights_classical = new_weights_c
+
+            # GNSS (use max standardized residual per baseline)
+            if len(gnss_obs) > 0:
+                baseline_std_res = np.zeros(len(gnss_obs))
+                for i in range(len(gnss_obs)):
+                    row_base = m_classical + 3 * i
+                    baseline_std_res[i] = max(
+                        abs(std_res_tmp[row_base + 0]),
+                        abs(std_res_tmp[row_base + 1]),
+                        abs(std_res_tmp[row_base + 2]),
+                    )
+                new_weights_gnss = compute_robust_weights(baseline_std_res, weight_func)
+                max_weight_change = max(max_weight_change, np.max(np.abs(new_weights_gnss - robust_weights_gnss)))
+                robust_weights_gnss = new_weights_gnss
+
+            # Leveling
+            if m_leveling > 0:
+                row_start = m_classical + m_gnss
+                new_weights_l = compute_robust_weights(std_res_tmp[row_start:row_start + m_leveling], weight_func)
+                max_weight_change = max(max_weight_change, np.max(np.abs(new_weights_l - robust_weights_leveling)))
+                robust_weights_leveling = new_weights_l
+
+            robust_iterations = irls_iter
+
+            if max_weight_change < options.robust_tol:
+                robust_converged = True
+                robust_message = f"IRLS converged after {irls_iter} iterations"
+                break
+        else:
+            robust_iterations = irls_iter if robust_method != RobustMethod.NONE else 0
             break
+
+    if robust_method != RobustMethod.NONE and robust_iterations >= max_irls:
+        robust_converged = False
+        robust_message = f"IRLS did not converge after {max_irls} iterations"
 
     # Final computation for residuals and statistics
     A_fin, w_fin, sigmas_fin, computed_fin, sigmas_lev_fin, computed_lev_fin = _linearize_mixed(
@@ -382,26 +566,28 @@ def adjust_network_mixed(
     )
     residuals = w_fin
 
-    # Compute vTPv (weighted sum of squared residuals)
+    # Compute vTPv (weighted sum of squared residuals) with final robust weights
     vTPv = 0.0
 
     # Classical contribution
     if m_classical > 0:
         v_c = residuals[:m_classical]
-        weights_c = 1.0 / (sigmas_fin ** 2)
+        base_weights_c = 1.0 / (sigmas_fin ** 2)
+        weights_c = base_weights_c * robust_weights_classical
         vTPv += float((v_c * v_c * weights_c).sum())
 
     # GNSS contribution
     for i, P_block in enumerate(gnss_weight_blocks):
         row_base = m_classical + 3 * i
         v_g = residuals[row_base:row_base+3]
-        vTPv += float(v_g @ P_block @ v_g)
+        vTPv += float(v_g @ (P_block * robust_weights_gnss[i]) @ v_g)
 
     # Leveling contribution
     if m_leveling > 0:
         row_start = m_classical + m_gnss
         v_l = residuals[row_start:row_start + m_leveling]
-        weights_l = 1.0 / (sigmas_lev_fin ** 2)
+        base_weights_l = 1.0 / (sigmas_lev_fin ** 2)
+        weights_l = base_weights_l * robust_weights_leveling
         vTPv += float((v_l * v_l * weights_l).sum())
 
     dof = m - n
@@ -420,23 +606,25 @@ def adjust_network_mixed(
     cov_matrix: Optional[np.ndarray] = None
 
     if options.compute_covariances:
-        # Rebuild N for Qxx
+        # Rebuild N for Qxx (with robust weights)
         N_fin = np.zeros((n, n), dtype=float)
 
         if m_classical > 0:
             A_c = A_fin[:m_classical, :]
-            weights_c = 1.0 / (sigmas_fin ** 2)
+            base_weights_c = 1.0 / (sigmas_fin ** 2)
+            weights_c = base_weights_c * robust_weights_classical
             N_fin += (A_c.T * weights_c) @ A_c
 
         for i, P_block in enumerate(gnss_weight_blocks):
             row_base = m_classical + 3 * i
             A_g = A_fin[row_base:row_base+3, :]
-            N_fin += A_g.T @ P_block @ A_g
+            N_fin += A_g.T @ (P_block * robust_weights_gnss[i]) @ A_g
 
         if m_leveling > 0:
             row_start = m_classical + m_gnss
             A_l = A_fin[row_start:row_start + m_leveling, :]
-            weights_l = 1.0 / (sigmas_lev_fin ** 2)
+            base_weights_l = 1.0 / (sigmas_lev_fin ** 2)
+            weights_l = base_weights_l * robust_weights_leveling
             N_fin += (A_l.T * weights_l) @ A_l
 
         try:
@@ -588,18 +776,20 @@ def adjust_network_mixed(
     residual_details: List[ResidualInfo] = []
     flagged: List[str] = []
 
-    # Build P diagonal for reliability computations
+    # Build P diagonal for reliability computations (with robust weights)
     Pdiag = np.zeros(m, dtype=float)
     if m_classical > 0:
-        Pdiag[:m_classical] = 1.0 / (sigmas_fin ** 2)
+        base_Pdiag_c = 1.0 / (sigmas_fin ** 2)
+        Pdiag[:m_classical] = base_Pdiag_c * robust_weights_classical
     for i, P_block in enumerate(gnss_weight_blocks):
         row_base = m_classical + 3 * i
-        Pdiag[row_base + 0] = P_block[0, 0]
-        Pdiag[row_base + 1] = P_block[1, 1]
-        Pdiag[row_base + 2] = P_block[2, 2]
+        Pdiag[row_base + 0] = P_block[0, 0] * robust_weights_gnss[i]
+        Pdiag[row_base + 1] = P_block[1, 1] * robust_weights_gnss[i]
+        Pdiag[row_base + 2] = P_block[2, 2] * robust_weights_gnss[i]
     if m_leveling > 0:
         row_start = m_classical + m_gnss
-        Pdiag[row_start:row_start + m_leveling] = 1.0 / (sigmas_lev_fin ** 2)
+        base_Pdiag_l = 1.0 / (sigmas_lev_fin ** 2)
+        Pdiag[row_start:row_start + m_leveling] = base_Pdiag_l * robust_weights_leveling
 
     # Reliability measures
     r_vals = None
@@ -657,6 +847,7 @@ def adjust_network_mixed(
             external_reliability=float(ext_rel[j]) if ext_rel is not None else None,
             is_outlier_candidate=is_candidate,
             flagged=is_flagged,
+            weight_factor=float(robust_weights_classical[j]) if robust_method != RobustMethod.NONE else None,
         )
 
         if isinstance(obs, (DistanceObservation, DirectionObservation)):
@@ -739,6 +930,7 @@ def adjust_network_mixed(
             flagged=is_flagged,
             from_point=obs.from_point_id,
             to_point=obs.to_point_id,
+            weight_factor=float(robust_weights_gnss[i]) if robust_method != RobustMethod.NONE else None,
         )
 
         # Store component residuals as attributes
@@ -786,6 +978,7 @@ def adjust_network_mixed(
             flagged=is_flagged,
             from_point=obs.from_point_id,
             to_point=obs.to_point_id,
+            weight_factor=float(robust_weights_leveling[j]) if robust_method != RobustMethod.NONE else None,
         )
 
         std_residuals[obs.id] = float(std)
@@ -851,6 +1044,11 @@ def adjust_network_mixed(
         flagged_observations=flagged,
         messages=messages,
         network_name=network.name,
+        # Robust estimation fields (Phase 7A)
+        robust_method=robust_method.value if robust_method != RobustMethod.NONE else None,
+        robust_iterations=robust_iterations,
+        robust_converged=robust_converged,
+        robust_message=robust_message,
     )
 
 

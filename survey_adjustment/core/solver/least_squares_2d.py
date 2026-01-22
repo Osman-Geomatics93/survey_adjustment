@@ -7,6 +7,9 @@ Supported observation types:
   - DirectionObservation (with orientation unknown per set_id)
   - AngleObservation
 
+Supports robust estimation via IRLS (Iteratively Reweighted Least Squares)
+with Huber, Danish, and IGG-III weight functions.
+
 This module intentionally contains **no QGIS imports** so it can be unit-
 tested and re-used in non-QGIS contexts.
 """
@@ -15,7 +18,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 try:
     import numpy as np
@@ -23,7 +26,7 @@ except ImportError:  # pragma: no cover
     np = None  # type: ignore
 
 from ..models.network import Network
-from ..models.options import AdjustmentOptions
+from ..models.options import AdjustmentOptions, RobustEstimator
 from ..models.point import Point
 from ..models.observation import (
     Observation,
@@ -60,6 +63,12 @@ from .geometry import (
     angle_partials,
 )
 from .indexing import build_parameter_index, validate_network_for_adjustment
+from .robust import (
+    RobustMethod,
+    get_weight_function,
+    compute_robust_weights,
+    describe_method,
+)
 
 
 
@@ -116,42 +125,129 @@ def adjust_network_2d(network: Network, options: AdjustmentOptions | None = None
     span = _network_span(network.points)
     orient_tol = max(1e-14, options.convergence_threshold / span)
 
-    converged = False
-    last_dx = None
+    # Robust estimation setup
+    robust_method = RobustMethod.NONE
+    if options.robust_estimator is not None:
+        if options.robust_estimator == RobustEstimator.HUBER:
+            robust_method = RobustMethod.HUBER
+        elif options.robust_estimator == RobustEstimator.DANISH:
+            robust_method = RobustMethod.DANISH
+        elif options.robust_estimator == RobustEstimator.IGG3:
+            robust_method = RobustMethod.IGG3
 
-    for it in range(1, options.max_iterations + 1):
-        A, w, sigmas, computed = _linearize(enabled_obs, state, index)
+    weight_func = get_weight_function(
+        robust_method,
+        huber_c=options.huber_c,
+        danish_c=options.danish_c,
+        igg3_k0=options.igg3_k0,
+        igg3_k1=options.igg3_k1,
+    )
 
-        weights = 1.0 / (sigmas ** 2)
-        Aw = A * weights[:, None]
-        N = A.T @ Aw
-        u = A.T @ (weights * w)
+    # Initialize robust weights to 1.0
+    robust_weights = np.ones(m)
+    robust_converged = True
+    robust_iterations = 0
+    robust_message: Optional[str] = None
 
-        try:
-            dx = np.linalg.solve(N, u)
-        except np.linalg.LinAlgError:
-            return AdjustmentResult.failure("Normal matrix is singular (datum definition / geometry issue)")
+    # Outer IRLS loop (only if robust method is enabled)
+    max_irls = options.robust_max_iterations if robust_method != RobustMethod.NONE else 1
 
-        last_dx = dx
-        _apply_corrections(state, index, dx)
+    for irls_iter in range(1, max_irls + 1):
+        # Reset state for each IRLS iteration (re-solve from initial approximation)
+        if irls_iter > 1:
+            state = _State(
+                points={pid: (p.easting, p.northing) for pid, p in network.points.items()},
+                orientations={set_id: 0.0 for set_id in index.orientation_order},
+            )
 
-        # Convergence check
-        coord_max = 0.0
-        for (pid, comp), idxp in index.coord_index.items():
-            coord_max = max(coord_max, abs(dx[idxp]))
-        orient_max = 0.0
-        for set_id, idxo in index.orientation_index.items():
-            orient_max = max(orient_max, abs(dx[idxo]))
+        converged = False
+        last_dx = None
 
-        if coord_max <= options.convergence_threshold and orient_max <= orient_tol:
-            converged = True
+        # Inner Gauss-Newton iteration loop
+        for it in range(1, options.max_iterations + 1):
+            A, w, sigmas, computed = _linearize(enabled_obs, state, index)
+
+            # Base weights from sigmas, modified by robust weights
+            base_weights = 1.0 / (sigmas ** 2)
+            weights = base_weights * robust_weights
+
+            Aw = A * weights[:, None]
+            N = A.T @ Aw
+            u = A.T @ (weights * w)
+
+            try:
+                dx = np.linalg.solve(N, u)
+            except np.linalg.LinAlgError:
+                return AdjustmentResult.failure("Normal matrix is singular (datum definition / geometry issue)")
+
+            last_dx = dx
+            _apply_corrections(state, index, dx)
+
+            # Convergence check
+            coord_max = 0.0
+            for (pid, comp), idxp in index.coord_index.items():
+                coord_max = max(coord_max, abs(dx[idxp]))
+            orient_max = 0.0
+            for set_id, idxo in index.orientation_index.items():
+                orient_max = max(orient_max, abs(dx[idxo]))
+
+            if coord_max <= options.convergence_threshold and orient_max <= orient_tol:
+                converged = True
+                break
+
+        # After G-N convergence, compute standardized residuals for IRLS update
+        if robust_method != RobustMethod.NONE and irls_iter < max_irls:
+            A_tmp, w_tmp, sigmas_tmp, _ = _linearize(enabled_obs, state, index)
+            residuals_tmp = w_tmp
+            Pdiag_tmp = 1.0 / (sigmas_tmp ** 2) * robust_weights
+            vTPv_tmp = float((residuals_tmp * residuals_tmp * Pdiag_tmp).sum())
+            dof_tmp = m - n
+
+            # Use a-priori sigma0 for IRLS to avoid masking effect where outliers
+            # inflate the a-posteriori sigma0 and prevent their own detection
+            sigma0_tmp = math.sqrt(max(options.a_priori_variance, 1e-30))
+
+            # Compute qvv for standardized residuals
+            try:
+                N_tmp = (A_tmp.T * Pdiag_tmp) @ A_tmp
+                Qxx_tmp = np.linalg.solve(N_tmp, np.eye(n))
+                B_tmp = A_tmp @ Qxx_tmp
+                diag_AQAt = (B_tmp * A_tmp).sum(axis=1)
+                qvv_diag_tmp = (1.0 / Pdiag_tmp) - diag_AQAt
+                qvv_diag_tmp = np.maximum(qvv_diag_tmp, 1e-30)
+                std_res_tmp = residuals_tmp / (sigma0_tmp * np.sqrt(qvv_diag_tmp))
+            except np.linalg.LinAlgError:
+                std_res_tmp = residuals_tmp / (sigmas_tmp * sigma0_tmp)
+
+            # Compute new robust weights
+            new_robust_weights = compute_robust_weights(std_res_tmp, weight_func)
+
+            # Check IRLS convergence
+            weight_change = np.abs(new_robust_weights - robust_weights)
+            max_weight_change = np.max(weight_change)
+
+            robust_weights = new_robust_weights
+            robust_iterations = irls_iter
+
+            if max_weight_change < options.robust_tol:
+                robust_converged = True
+                robust_message = f"IRLS converged after {irls_iter} iterations"
+                break
+        else:
+            robust_iterations = irls_iter if robust_method != RobustMethod.NONE else 0
             break
+
+    if robust_method != RobustMethod.NONE and robust_iterations >= max_irls:
+        robust_converged = False
+        robust_message = f"IRLS did not converge after {max_irls} iterations"
 
     # Final recomputation for residuals and statistics
     A_fin, w_fin, sigmas_fin, computed_fin = _linearize(enabled_obs, state, index)
     residuals = w_fin  # l - f(x_hat) (wrapped for angular obs)
 
-    Pdiag = 1.0 / (sigmas_fin ** 2)
+    # Apply final robust weights to weight matrix
+    base_Pdiag = 1.0 / (sigmas_fin ** 2)
+    Pdiag = base_Pdiag * robust_weights
     vTPv = float((residuals * residuals * Pdiag).sum())
     dof = m - n
 
@@ -277,6 +373,7 @@ def adjust_network_2d(network: Network, options: AdjustmentOptions | None = None
             external_reliability=float(ext_rel[j]) if ext_rel is not None else None,
             is_outlier_candidate=is_candidate,
             flagged=is_flagged,
+            weight_factor=float(robust_weights[j]) if robust_method != RobustMethod.NONE else None,
         )
         if isinstance(obs, (DistanceObservation, DirectionObservation)):
             info.from_point = obs.from_point_id
@@ -302,7 +399,6 @@ def adjust_network_2d(network: Network, options: AdjustmentOptions | None = None
         )
 
     result = AdjustmentResult(
-
         success=True,
         iterations=min(options.max_iterations, it if 'it' in locals() else 0),
         converged=converged,
@@ -319,6 +415,11 @@ def adjust_network_2d(network: Network, options: AdjustmentOptions | None = None
         flagged_observations=flagged,
         messages=[] if dof > 0 else ["No redundancy (dof=0): variance factor set to 1.0"],
         network_name=network.name,
+        # Robust estimation fields (Phase 7A)
+        robust_method=robust_method.value if robust_method != RobustMethod.NONE else None,
+        robust_iterations=robust_iterations,
+        robust_converged=robust_converged,
+        robust_message=robust_message,
     )
 
     return result
