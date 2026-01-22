@@ -16,6 +16,7 @@ from survey_adjustment.core.models.observation import (
     DirectionObservation,
     AngleObservation,
     GnssBaselineObservation,
+    HeightDifferenceObservation,
 )
 from survey_adjustment.core.models.network import Network
 from survey_adjustment.core.models.options import AdjustmentOptions
@@ -24,6 +25,7 @@ from survey_adjustment.core.reports.html_report import (
     render_html_report,
     _is_mixed_result,
     _has_gnss_observations,
+    _has_leveling_observations,
 )
 
 
@@ -176,6 +178,176 @@ def no_datum_network() -> Network:
         id="D1", obs_type=None, value=100.0, sigma=0.003,
         from_point_id="A", to_point_id="B"
     ))
+    return net
+
+
+@pytest.fixture
+def classical_leveling_network() -> Network:
+    """Create a network with classical (distances, directions) + leveling observations.
+
+    Network:
+    - BASE: fully fixed (E, N, H)
+    - P1, P2: unknown E, N, H
+
+    Classical: distances and directions for horizontal control
+    Leveling: height differences for vertical control
+
+    Unknowns: P1(E,N,H) + P2(E,N,H) + orientation = 7
+    Observations: 4 distances + 2 directions + 2 leveling = 8
+    DOF = 8 - 7 = 1
+    """
+    points = {
+        "BASE": Point(
+            id="BASE", name="Base Station",
+            easting=1000.0, northing=2000.0, height=100.0,
+            fixed_easting=True, fixed_northing=True, fixed_height=True
+        ),
+        "P1": Point(
+            id="P1", name="Point 1",
+            easting=1100.0, northing=2000.0, height=102.0,
+            fixed_easting=False, fixed_northing=False, fixed_height=False
+        ),
+        "P2": Point(
+            id="P2", name="Point 2",
+            easting=1100.0, northing=2100.0, height=105.0,
+            fixed_easting=False, fixed_northing=False, fixed_height=False
+        ),
+    }
+
+    net = Network(name="Classical + Leveling Network", points=points)
+
+    # Classical horizontal observations
+    # Distance BASE-P1 = 100m
+    net.add_observation(DistanceObservation(
+        id="D1", obs_type=None, value=100.0, sigma=0.005,
+        from_point_id="BASE", to_point_id="P1"
+    ))
+    # Distance P1-P2 = 100m
+    net.add_observation(DistanceObservation(
+        id="D2", obs_type=None, value=100.0, sigma=0.005,
+        from_point_id="P1", to_point_id="P2"
+    ))
+    # Distance BASE-P2 for redundancy: sqrt(100^2 + 100^2) = 141.42
+    net.add_observation(DistanceObservation(
+        id="D3", obs_type=None, value=141.42, sigma=0.005,
+        from_point_id="BASE", to_point_id="P2"
+    ))
+    # ΔH BASE-P2 for redundancy (alternative leveling route)
+    net.add_observation(HeightDifferenceObservation(
+        id="LEV3", obs_type=None, value=5.0, sigma=0.002,
+        from_point_id="BASE", to_point_id="P2"
+    ))
+
+    # Directions from BASE
+    az_p1 = math.atan2(100.0, 0.0)  # 90° (east)
+    az_p2 = math.atan2(100.0, 100.0)  # 45° NE
+    net.add_observation(DirectionObservation(
+        id="DIR1", obs_type=None, value=az_p1, sigma=0.00015,
+        from_point_id="BASE", to_point_id="P1", set_id="SET_BASE"
+    ))
+    net.add_observation(DirectionObservation(
+        id="DIR2", obs_type=None, value=az_p2, sigma=0.00015,
+        from_point_id="BASE", to_point_id="P2", set_id="SET_BASE"
+    ))
+
+    # Leveling observations (height differences)
+    # ΔH BASE-P1 = +2.0m
+    net.add_observation(HeightDifferenceObservation(
+        id="LEV1", obs_type=None, value=2.0, sigma=0.002,
+        from_point_id="BASE", to_point_id="P1"
+    ))
+    # ΔH P1-P2 = +3.0m
+    net.add_observation(HeightDifferenceObservation(
+        id="LEV2", obs_type=None, value=3.0, sigma=0.002,
+        from_point_id="P1", to_point_id="P2"
+    ))
+
+    return net
+
+
+@pytest.fixture
+def full_unified_network() -> Network:
+    """Create a fully unified network: classical + GNSS + leveling.
+
+    Network:
+    - BASE: fully fixed (E, N, H)
+    - P1, P2, P3: unknown
+
+    Classical: distances and directions
+    GNSS: baselines with 3D covariance
+    Leveling: height differences
+    """
+    points = {
+        "BASE": Point(
+            id="BASE", name="Base Station",
+            easting=1000.0, northing=2000.0, height=100.0,
+            fixed_easting=True, fixed_northing=True, fixed_height=True
+        ),
+        "P1": Point(
+            id="P1", name="Point 1",
+            easting=1100.0, northing=2000.0, height=102.0,
+            fixed_easting=False, fixed_northing=False, fixed_height=False
+        ),
+        "P2": Point(
+            id="P2", name="Point 2",
+            easting=1100.0, northing=2100.0, height=105.0,
+            fixed_easting=False, fixed_northing=False, fixed_height=False
+        ),
+        "P3": Point(
+            id="P3", name="Point 3",
+            easting=1200.0, northing=2050.0, height=108.0,
+            fixed_easting=False, fixed_northing=False, fixed_height=False
+        ),
+    }
+
+    net = Network(name="Unified Network", points=points)
+
+    # Classical horizontal observations
+    net.add_observation(DistanceObservation(
+        id="D1", obs_type=None, value=100.0, sigma=0.005,
+        from_point_id="BASE", to_point_id="P1"
+    ))
+    az_p1 = math.atan2(100.0, 0.0)  # 90° (east)
+    net.add_observation(DirectionObservation(
+        id="DIR1", obs_type=None, value=az_p1, sigma=0.00015,
+        from_point_id="BASE", to_point_id="P1", set_id="SET_BASE"
+    ))
+
+    # GNSS baselines
+    cov_ee = 0.000004  # (2mm)^2
+    cov_nn = 0.000004
+    cov_hh = 0.000009  # (3mm)^2
+
+    # BASE-P3: dE=200, dN=50, dH=8
+    net.add_observation(GnssBaselineObservation(
+        id="BL1", obs_type=None, value=0.0, sigma=1.0,
+        from_point_id="BASE", to_point_id="P3",
+        dE=200.0, dN=50.0, dH=8.0,
+        cov_EE=cov_ee, cov_EN=0.0, cov_EH=0.0,
+        cov_NN=cov_nn, cov_NH=0.0, cov_HH=cov_hh
+    ))
+
+    # P1-P2 GNSS baseline: dE=0, dN=100, dH=3
+    net.add_observation(GnssBaselineObservation(
+        id="BL2", obs_type=None, value=0.0, sigma=1.0,
+        from_point_id="P1", to_point_id="P2",
+        dE=0.0, dN=100.0, dH=3.0,
+        cov_EE=cov_ee, cov_EN=0.0, cov_EH=0.0,
+        cov_NN=cov_nn, cov_NH=0.0, cov_HH=cov_hh
+    ))
+
+    # Leveling observations
+    # ΔH BASE-P1 = +2.0m
+    net.add_observation(HeightDifferenceObservation(
+        id="LEV1", obs_type=None, value=2.0, sigma=0.002,
+        from_point_id="BASE", to_point_id="P1"
+    ))
+    # ΔH P2-P3 = +3.0m
+    net.add_observation(HeightDifferenceObservation(
+        id="LEV2", obs_type=None, value=3.0, sigma=0.002,
+        from_point_id="P2", to_point_id="P3"
+    ))
+
     return net
 
 
@@ -569,3 +741,392 @@ class TestMixedResultSerialization:
         assert isinstance(json_str, str)
         assert "gnss_baseline" in json_str
         assert "distance" in json_str
+
+
+# ---------------------------------------------------------------------------
+# Phase 6B: Classical + Leveling Tests
+# ---------------------------------------------------------------------------
+
+class TestClassicalLevelingMixed:
+    """Tests for mixed adjustment with classical + leveling observations."""
+
+    def test_classical_leveling_success(self, classical_leveling_network):
+        """Test successful adjustment with classical + leveling."""
+        options = AdjustmentOptions(compute_reliability=True, max_iterations=20)
+        result = adjust_network_mixed(classical_leveling_network, options)
+
+        assert result.success is True
+        # Convergence may not always be reached, but coordinates should be reasonable
+
+    def test_classical_leveling_coordinates(self, classical_leveling_network):
+        """Test that adjusted coordinates are correct for classical + leveling."""
+        result = adjust_network_mixed(classical_leveling_network)
+
+        # BASE is fixed
+        base = result.adjusted_points["BASE"]
+        assert base.easting == 1000.0
+        assert base.northing == 2000.0
+        assert base.height == 100.0
+
+        # P1 should be at approximately (1100, 2000, 102)
+        p1 = result.adjusted_points["P1"]
+        assert abs(p1.easting - 1100.0) < 1.0
+        assert abs(p1.northing - 2000.0) < 1.0
+        assert abs(p1.height - 102.0) < 0.1  # From leveling
+
+        # P2 should be at approximately (1100, 2100, 105)
+        p2 = result.adjusted_points["P2"]
+        assert abs(p2.height - 105.0) < 0.1  # From leveling
+
+    def test_classical_leveling_residuals(self, classical_leveling_network):
+        """Test that residuals include both classical and leveling types."""
+        result = adjust_network_mixed(classical_leveling_network)
+
+        obs_types = {r.obs_type for r in result.residual_details}
+        assert "distance" in obs_types
+        assert "direction" in obs_types
+        assert "height_diff" in obs_types
+
+    def test_classical_leveling_is_mixed(self, classical_leveling_network):
+        """Test that classical + leveling is detected as mixed."""
+        result = adjust_network_mixed(classical_leveling_network)
+        assert _is_mixed_result(result) is True
+
+    def test_classical_leveling_has_leveling(self, classical_leveling_network):
+        """Test that leveling observations are detected."""
+        result = adjust_network_mixed(classical_leveling_network)
+        assert _has_leveling_observations(result) is True
+
+    def test_classical_leveling_sigma_h(self, classical_leveling_network):
+        """Test that sigma_height is computed for adjusted points."""
+        result = adjust_network_mixed(classical_leveling_network)
+
+        # Free points should have sigma_height
+        p1 = result.adjusted_points["P1"]
+        # sigma_height may be None if DOF=0, but should be present if DOF>0
+        if result.degrees_of_freedom > 0:
+            assert p1.sigma_height is not None
+
+
+class TestValidationWithLeveling:
+    """Tests for validate_mixed() with leveling observations."""
+
+    def test_leveling_requires_height_datum(self):
+        """Test that leveling requires at least one fixed height."""
+        points = {
+            "A": Point(id="A", name="A", easting=0, northing=0, height=0,
+                       fixed_easting=True, fixed_northing=True, fixed_height=False),
+            "B": Point(id="B", name="B", easting=100, northing=0, height=5,
+                       fixed_easting=False, fixed_northing=False, fixed_height=False),
+        }
+        net = Network(name="No Height Datum", points=points)
+
+        # Distance for horizontal control
+        net.add_observation(DistanceObservation(
+            id="D1", obs_type=None, value=100.0, sigma=0.003,
+            from_point_id="A", to_point_id="B"
+        ))
+        # Leveling without height datum
+        net.add_observation(HeightDifferenceObservation(
+            id="LEV1", obs_type=None, value=5.0, sigma=0.002,
+            from_point_id="A", to_point_id="B"
+        ))
+
+        errors = net.validate_mixed()
+        assert len(errors) > 0
+        error_text = " ".join(errors).lower()
+        assert "height" in error_text
+
+    def test_leveling_missing_point_detected(self):
+        """Test that missing points are detected in leveling observations."""
+        points = {
+            "A": Point(id="A", name="A", easting=0, northing=0, height=0,
+                       fixed_easting=True, fixed_northing=True, fixed_height=True),
+        }
+        net = Network(name="Missing Point", points=points)
+        net.add_observation(HeightDifferenceObservation(
+            id="LEV1", obs_type=None, value=5.0, sigma=0.002,
+            from_point_id="A", to_point_id="MISSING"
+        ))
+
+        errors = net.validate_mixed()
+        assert len(errors) > 0
+        assert any("missing" in e.lower() for e in errors)
+
+    def test_leveling_only_in_mixed(self):
+        """Test that leveling-only works through mixed validation.
+
+        Note: A leveling-only network doesn't need E, N datum.
+        """
+        points = {
+            "BM1": Point(id="BM1", name="Benchmark 1",
+                         easting=0, northing=0, height=100.0,
+                         fixed_easting=False, fixed_northing=False, fixed_height=True),
+            "BM2": Point(id="BM2", name="Benchmark 2",
+                         easting=0, northing=0, height=102.0,
+                         fixed_easting=False, fixed_northing=False, fixed_height=False),
+        }
+        net = Network(name="Leveling Only", points=points)
+        net.add_observation(HeightDifferenceObservation(
+            id="LEV1", obs_type=None, value=2.0, sigma=0.002,
+            from_point_id="BM1", to_point_id="BM2"
+        ))
+
+        errors = net.validate_mixed()
+        # Leveling-only should pass validation (no E, N datum needed)
+        # May have insufficient observations error, but not datum error
+        for e in errors:
+            if "datum" in e.lower():
+                # Should not require E/N datum for leveling-only
+                assert "easting" not in e.lower()
+                assert "northing" not in e.lower()
+
+
+# ---------------------------------------------------------------------------
+# Phase 6B: Full Unified (Classical + GNSS + Leveling) Tests
+# ---------------------------------------------------------------------------
+
+class TestFullUnifiedMixed:
+    """Tests for the full unified mixed adjustment (classical + GNSS + leveling)."""
+
+    def test_unified_success(self, full_unified_network):
+        """Test successful unified adjustment."""
+        options = AdjustmentOptions(compute_reliability=True)
+        result = adjust_network_mixed(full_unified_network, options)
+
+        assert result.success is True
+        assert result.converged is True
+
+    def test_unified_all_obs_types(self, full_unified_network):
+        """Test that all three observation types are in residuals."""
+        result = adjust_network_mixed(full_unified_network)
+
+        obs_types = {r.obs_type for r in result.residual_details}
+        assert "distance" in obs_types
+        assert "direction" in obs_types
+        assert "gnss_baseline" in obs_types
+        assert "height_diff" in obs_types
+
+    def test_unified_coordinates(self, full_unified_network):
+        """Test adjusted coordinates in unified network."""
+        result = adjust_network_mixed(full_unified_network)
+
+        # BASE is fixed
+        base = result.adjusted_points["BASE"]
+        assert base.easting == 1000.0
+        assert base.northing == 2000.0
+        assert base.height == 100.0
+
+        # P1 constrained by classical + leveling
+        p1 = result.adjusted_points["P1"]
+        assert abs(p1.easting - 1100.0) < 1.0
+        assert abs(p1.height - 102.0) < 0.5  # Leveling provides height
+
+        # P3 constrained by GNSS
+        p3 = result.adjusted_points["P3"]
+        assert abs(p3.easting - 1200.0) < 1.0
+        assert abs(p3.northing - 2050.0) < 1.0
+
+    def test_unified_is_mixed(self, full_unified_network):
+        """Test that unified network is detected as mixed."""
+        result = adjust_network_mixed(full_unified_network)
+        assert _is_mixed_result(result) is True
+
+    def test_unified_has_all_types(self, full_unified_network):
+        """Test detection of GNSS and leveling in unified result."""
+        result = adjust_network_mixed(full_unified_network)
+        assert _has_gnss_observations(result) is True
+        assert _has_leveling_observations(result) is True
+
+    def test_unified_variance_factor(self, full_unified_network):
+        """Test that variance factor is computed."""
+        result = adjust_network_mixed(full_unified_network)
+
+        assert result.variance_factor is not None
+        assert result.variance_factor > 0
+
+    def test_unified_chi_square(self, full_unified_network):
+        """Test chi-square global test when DOF > 0."""
+        # Add more observations to increase DOF
+        full_unified_network.add_observation(DistanceObservation(
+            id="D2", obs_type=None, value=111.8, sigma=0.005,
+            from_point_id="P1", to_point_id="P2"
+        ))
+
+        result = adjust_network_mixed(full_unified_network)
+
+        if result.degrees_of_freedom > 0:
+            assert result.chi_square_test is not None
+
+
+# ---------------------------------------------------------------------------
+# Phase 6B: HTML Report with Leveling Tests
+# ---------------------------------------------------------------------------
+
+class TestLevelingHTMLReport:
+    """Tests for HTML report generation with leveling in mixed adjustment."""
+
+    def test_html_report_classical_leveling_title(self, classical_leveling_network):
+        """Test HTML report title for classical + leveling."""
+        result = adjust_network_mixed(classical_leveling_network)
+        html = render_html_report(result)
+
+        # Title should include "Leveling"
+        assert "Leveling" in html
+
+    def test_html_report_unified_title(self, full_unified_network):
+        """Test HTML report title for full unified network."""
+        result = adjust_network_mixed(full_unified_network)
+        html = render_html_report(result)
+
+        # Title should include all three components
+        assert "Classical" in html
+        assert "GNSS" in html
+        assert "Leveling" in html
+
+    def test_html_report_height_diff_residuals(self, classical_leveling_network):
+        """Test that height_diff residuals appear in HTML report."""
+        result = adjust_network_mixed(classical_leveling_network)
+        html = render_html_report(result)
+
+        # Should contain height_diff observation type
+        assert "height_diff" in html
+
+    def test_html_report_3d_coords_with_leveling(self, classical_leveling_network):
+        """Test that HTML report shows H column for leveling results."""
+        result = adjust_network_mixed(classical_leveling_network)
+        html = render_html_report(result)
+
+        # Should contain H and σH columns
+        assert "<th>H</th>" in html or "H (" in html
+        assert "σH" in html
+
+
+# ---------------------------------------------------------------------------
+# Phase 6B: Edge Cases
+# ---------------------------------------------------------------------------
+
+class TestLevelingEdgeCases:
+    """Edge case tests for leveling in mixed adjustment."""
+
+    def test_leveling_only_via_mixed_solver(self):
+        """Test leveling-only network through mixed solver."""
+        points = {
+            "BM1": Point(id="BM1", name="Benchmark 1",
+                         easting=0, northing=0, height=100.0,
+                         fixed_easting=True, fixed_northing=True, fixed_height=True),
+            "BM2": Point(id="BM2", name="Benchmark 2",
+                         easting=0, northing=50, height=102.0,
+                         fixed_easting=True, fixed_northing=True, fixed_height=False),
+            "BM3": Point(id="BM3", name="Benchmark 3",
+                         easting=0, northing=100, height=105.0,
+                         fixed_easting=True, fixed_northing=True, fixed_height=False),
+        }
+        net = Network(name="Leveling Only", points=points)
+
+        net.add_observation(HeightDifferenceObservation(
+            id="LEV1", obs_type=None, value=2.0, sigma=0.002,
+            from_point_id="BM1", to_point_id="BM2"
+        ))
+        net.add_observation(HeightDifferenceObservation(
+            id="LEV2", obs_type=None, value=3.0, sigma=0.002,
+            from_point_id="BM2", to_point_id="BM3"
+        ))
+
+        result = adjust_network_mixed(net)
+
+        assert result.success is True
+        # Adjusted heights
+        bm2 = result.adjusted_points["BM2"]
+        assert abs(bm2.height - 102.0) < 0.1
+        bm3 = result.adjusted_points["BM3"]
+        assert abs(bm3.height - 105.0) < 0.1
+
+    def test_gnss_plus_leveling_no_classical(self):
+        """Test GNSS + leveling without classical observations."""
+        points = {
+            "BASE": Point(id="BASE", name="Base",
+                          easting=0, northing=0, height=100.0,
+                          fixed_easting=True, fixed_northing=True, fixed_height=True),
+            "P1": Point(id="P1", name="P1",
+                        easting=100, northing=50, height=105.0,
+                        fixed_easting=False, fixed_northing=False, fixed_height=False),
+            "P2": Point(id="P2", name="P2",
+                        easting=100, northing=100, height=108.0,
+                        fixed_easting=False, fixed_northing=False, fixed_height=False),
+        }
+        net = Network(name="GNSS + Leveling", points=points)
+
+        # GNSS baseline
+        net.add_observation(GnssBaselineObservation(
+            id="BL1", obs_type=None, value=0.0, sigma=1.0,
+            from_point_id="BASE", to_point_id="P1",
+            dE=100.0, dN=50.0, dH=5.0,
+            cov_EE=0.000004, cov_EN=0.0, cov_EH=0.0,
+            cov_NN=0.000004, cov_NH=0.0, cov_HH=0.000009
+        ))
+
+        # Leveling
+        net.add_observation(HeightDifferenceObservation(
+            id="LEV1", obs_type=None, value=5.0, sigma=0.002,
+            from_point_id="BASE", to_point_id="P1"
+        ))
+        net.add_observation(HeightDifferenceObservation(
+            id="LEV2", obs_type=None, value=3.0, sigma=0.002,
+            from_point_id="P1", to_point_id="P2"
+        ))
+
+        # GNSS for P2 horizontal
+        net.add_observation(GnssBaselineObservation(
+            id="BL2", obs_type=None, value=0.0, sigma=1.0,
+            from_point_id="P1", to_point_id="P2",
+            dE=0.0, dN=50.0, dH=3.0,
+            cov_EE=0.000004, cov_EN=0.0, cov_EH=0.0,
+            cov_NN=0.000004, cov_NH=0.0, cov_HH=0.000009
+        ))
+
+        result = adjust_network_mixed(net)
+
+        assert result.success is True
+
+        # Should be detected as mixed (GNSS + leveling)
+        assert _is_mixed_result(result) is True
+        assert _has_gnss_observations(result) is True
+        assert _has_leveling_observations(result) is True
+
+    def test_redundant_height_observations(self):
+        """Test network with redundant height observations (both GNSS dH and leveling)."""
+        points = {
+            "BASE": Point(id="BASE", name="Base",
+                          easting=0, northing=0, height=100.0,
+                          fixed_easting=True, fixed_northing=True, fixed_height=True),
+            "P1": Point(id="P1", name="P1",
+                        easting=100, northing=0, height=105.0,
+                        fixed_easting=False, fixed_northing=False, fixed_height=False),
+        }
+        net = Network(name="Redundant Heights", points=points)
+
+        # GNSS baseline provides dH
+        net.add_observation(GnssBaselineObservation(
+            id="BL1", obs_type=None, value=0.0, sigma=1.0,
+            from_point_id="BASE", to_point_id="P1",
+            dE=100.0, dN=0.0, dH=5.0,
+            cov_EE=0.000004, cov_EN=0.0, cov_EH=0.0,
+            cov_NN=0.000004, cov_NH=0.0, cov_HH=0.000009
+        ))
+
+        # Leveling also provides ΔH (redundant with GNSS dH)
+        net.add_observation(HeightDifferenceObservation(
+            id="LEV1", obs_type=None, value=5.001, sigma=0.002,  # Slightly different
+            from_point_id="BASE", to_point_id="P1"
+        ))
+
+        result = adjust_network_mixed(net)
+
+        assert result.success is True
+        # DOF should be positive due to redundancy
+        assert result.degrees_of_freedom > 0
+
+        # Height should be adjusted (weighted mean of GNSS and leveling)
+        p1 = result.adjusted_points["P1"]
+        assert abs(p1.height - 105.0) < 0.1

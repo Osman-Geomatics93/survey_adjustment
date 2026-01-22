@@ -3,15 +3,17 @@
 Unified least-squares adjustment combining:
 - Classical observations: distances, directions, angles (2D: E, N)
 - GNSS baselines: (3D: E, N, H with full covariance)
+- Leveling observations: height differences (1D: H only)
 
 This solver handles mixed observation types in a single adjustment:
 - Unknowns: E, N, H of free points + orientation ω for direction stations
 - Classical observations affect only E, N (height not involved)
 - GNSS baselines affect E, N, H with 3x3 covariance blocks
-- Proper weighting: scalar for classical, block-inverse for GNSS
+- Leveling observations affect only H
+- Proper weighting: scalar for classical/leveling, block-inverse for GNSS
 
 The adjustment is iterative (Gauss-Newton) due to non-linear direction/angle
-observations. GNSS baselines are linear but included in the same solve.
+observations. GNSS baselines and leveling are linear but included in the same solve.
 
 This module intentionally contains **no QGIS imports** so it can be unit-
 tested and re-used in non-QGIS contexts.
@@ -36,6 +38,7 @@ from ..models.observation import (
     DistanceObservation,
     DirectionObservation,
     AngleObservation,
+    HeightDifferenceObservation,
     GnssBaselineObservation,
 )
 from ..results.adjustment_result import (
@@ -90,17 +93,19 @@ class _State:
 def _build_mixed_parameter_index(
     network: Network,
     gnss_obs: List[GnssBaselineObservation],
+    leveling_obs: List[HeightDifferenceObservation],
     has_classical: bool,
 ) -> MixedParameterIndex:
     """Build parameter index for mixed adjustment.
 
     For classical-only: E, N for non-fixed horizontal components
     For GNSS or mixed: E, N, H for non-fixed components
+    For leveling: H for points in leveling observations
     Plus orientation unknowns for direction sets.
 
     IMPORTANT: Height (H) unknowns are only added for points that actually
-    appear in GNSS baseline observations, since classical observations don't
-    constrain height.
+    appear in GNSS baseline or leveling observations, since classical 2D
+    observations don't constrain height.
     """
     coord_index: Dict[Tuple[str, str], int] = {}
     orientation_index: Dict[str, int] = {}
@@ -113,7 +118,18 @@ def _build_mixed_parameter_index(
         gnss_point_ids.add(obs.from_point_id)
         gnss_point_ids.add(obs.to_point_id)
 
+    # Collect point IDs that appear in leveling observations
+    leveling_point_ids: Set[str] = set()
+    for obs in leveling_obs:
+        leveling_point_ids.add(obs.from_point_id)
+        leveling_point_ids.add(obs.to_point_id)
+
+    # Points that need height unknowns
+    height_point_ids = gnss_point_ids | leveling_point_ids
+
     has_gnss = len(gnss_obs) > 0
+    has_leveling = len(leveling_obs) > 0
+    has_height_obs = has_gnss or has_leveling
 
     idx = 0
     for pid in sorted(network.points.keys()):
@@ -129,8 +145,8 @@ def _build_mixed_parameter_index(
             coord_order.append((pid, 'N'))
             idx += 1
 
-        # H only if GNSS baselines are present AND this point is in a GNSS baseline
-        if has_gnss and pid in gnss_point_ids and not p.fixed_height:
+        # H if this point is in GNSS or leveling observations
+        if has_height_obs and pid in height_point_ids and not p.fixed_height:
             coord_index[(pid, 'H')] = idx
             coord_order.append((pid, 'H'))
             idx += 1
@@ -178,13 +194,14 @@ def adjust_network_mixed(
     network: Network,
     options: AdjustmentOptions | None = None,
 ) -> AdjustmentResult:
-    """Run a mixed least-squares adjustment combining classical and GNSS observations.
+    """Run a mixed least-squares adjustment combining classical, GNSS, and leveling observations.
 
     This solver handles:
     - Distance observations (2D)
     - Direction observations with orientation unknowns (2D)
     - Angle observations (2D)
     - GNSS baseline observations (3D with full covariance)
+    - Height difference observations (1D leveling)
 
     Args:
         network: Input network with points and mixed observations
@@ -208,10 +225,13 @@ def adjust_network_mixed(
 
     classical_obs: List[Observation] = []
     gnss_obs: List[GnssBaselineObservation] = []
+    leveling_obs: List[HeightDifferenceObservation] = []
 
     for obs in enabled_obs:
         if isinstance(obs, GnssBaselineObservation):
             gnss_obs.append(obs)
+        elif isinstance(obs, HeightDifferenceObservation):
+            leveling_obs.append(obs)
         elif isinstance(obs, (DistanceObservation, DirectionObservation, AngleObservation)):
             classical_obs.append(obs)
         else:
@@ -219,29 +239,42 @@ def adjust_network_mixed(
 
     has_classical = len(classical_obs) > 0
     has_gnss = len(gnss_obs) > 0
+    has_leveling = len(leveling_obs) > 0
 
-    if not has_classical and not has_gnss:
+    if not has_classical and not has_gnss and not has_leveling:
         return AdjustmentResult.failure("No observations to adjust")
 
     # Count total observation equations
     # Classical: 1 equation each
     # GNSS: 3 equations each (dE, dN, dH)
+    # Leveling: 1 equation each
     m_classical = len(classical_obs)
     m_gnss = 3 * len(gnss_obs)
-    m = m_classical + m_gnss
+    m_leveling = len(leveling_obs)
+    m = m_classical + m_gnss + m_leveling
 
     # Build parameter index
-    index = _build_mixed_parameter_index(network, gnss_obs, has_classical)
+    index = _build_mixed_parameter_index(network, gnss_obs, leveling_obs, has_classical)
     n = index.num_params
 
     if n == 0:
         return AdjustmentResult.failure("All coordinates are fixed - nothing to adjust")
 
-    # Check for height values if GNSS present
-    if has_gnss:
-        for pid, p in network.points.items():
+    # Check for height values if GNSS or leveling present
+    if has_gnss or has_leveling:
+        # Collect point IDs that need heights
+        height_point_ids: Set[str] = set()
+        for obs in gnss_obs:
+            height_point_ids.add(obs.from_point_id)
+            height_point_ids.add(obs.to_point_id)
+        for obs in leveling_obs:
+            height_point_ids.add(obs.from_point_id)
+            height_point_ids.add(obs.to_point_id)
+
+        for pid in height_point_ids:
+            p = network.points[pid]
             if p.height is None:
-                return AdjustmentResult.failure(f"Point '{pid}' has no height value (required for GNSS)")
+                return AdjustmentResult.failure(f"Point '{pid}' has no height value (required for GNSS/leveling)")
 
     # Build initial state
     state = _State(
@@ -275,13 +308,14 @@ def adjust_network_mixed(
     # Iterative adjustment (Gauss-Newton)
     for it in range(1, options.max_iterations + 1):
         # Build design matrix and misclosure
-        A, w, sigmas_classical, computed_classical, gnss_l = _linearize_mixed(
-            classical_obs, gnss_obs, state, index, m, n
+        A, w, sigmas_classical, computed_classical, sigmas_leveling, computed_leveling = _linearize_mixed(
+            classical_obs, gnss_obs, leveling_obs, state, index, m, n, m_classical, m_gnss, m_leveling
         )
 
         # Build normal equations with mixed weighting
         # For classical: diagonal weights (1/sigma^2)
         # For GNSS: block weights (P = C^-1)
+        # For leveling: diagonal weights (1/sigma^2)
 
         N = np.zeros((n, n), dtype=float)
         u = np.zeros(n, dtype=float)
@@ -296,7 +330,7 @@ def adjust_network_mixed(
             N += A_c.T @ Aw_c
             u += A_c.T @ (weights_c * w_c)
 
-        # GNSS contribution (rows m_classical to m-1)
+        # GNSS contribution (rows m_classical to m_classical + m_gnss - 1)
         if m_gnss > 0:
             for i, P_block in enumerate(gnss_weight_blocks):
                 row_base = m_classical + 3 * i
@@ -307,6 +341,17 @@ def adjust_network_mixed(
                 AtP = A_g.T @ P_block
                 N += AtP @ A_g
                 u += AtP @ l_g
+
+        # Leveling contribution (rows m_classical + m_gnss to m - 1)
+        if m_leveling > 0:
+            row_start = m_classical + m_gnss
+            A_l = A[row_start:row_start + m_leveling, :]
+            w_l = w[row_start:row_start + m_leveling]
+            weights_l = 1.0 / (sigmas_leveling ** 2)
+
+            Aw_l = A_l * weights_l[:, None]
+            N += A_l.T @ Aw_l
+            u += A_l.T @ (weights_l * w_l)
 
         # Solve normal equations
         try:
@@ -332,8 +377,8 @@ def adjust_network_mixed(
             break
 
     # Final computation for residuals and statistics
-    A_fin, w_fin, sigmas_fin, computed_fin, gnss_l_fin = _linearize_mixed(
-        classical_obs, gnss_obs, state, index, m, n
+    A_fin, w_fin, sigmas_fin, computed_fin, sigmas_lev_fin, computed_lev_fin = _linearize_mixed(
+        classical_obs, gnss_obs, leveling_obs, state, index, m, n, m_classical, m_gnss, m_leveling
     )
     residuals = w_fin
 
@@ -351,6 +396,13 @@ def adjust_network_mixed(
         row_base = m_classical + 3 * i
         v_g = residuals[row_base:row_base+3]
         vTPv += float(v_g @ P_block @ v_g)
+
+    # Leveling contribution
+    if m_leveling > 0:
+        row_start = m_classical + m_gnss
+        v_l = residuals[row_start:row_start + m_leveling]
+        weights_l = 1.0 / (sigmas_lev_fin ** 2)
+        vTPv += float((v_l * v_l * weights_l).sum())
 
     dof = m - n
 
@@ -380,6 +432,12 @@ def adjust_network_mixed(
             row_base = m_classical + 3 * i
             A_g = A_fin[row_base:row_base+3, :]
             N_fin += A_g.T @ P_block @ A_g
+
+        if m_leveling > 0:
+            row_start = m_classical + m_gnss
+            A_l = A_fin[row_start:row_start + m_leveling, :]
+            weights_l = 1.0 / (sigmas_lev_fin ** 2)
+            N_fin += (A_l.T * weights_l) @ A_l
 
         try:
             Qxx = np.linalg.solve(N_fin, np.eye(n))
@@ -420,7 +478,8 @@ def adjust_network_mixed(
                 sigma_h = 0.0
 
             # Build point covariance (2x2 for EN, or 3x3 if height included)
-            if has_gnss:
+            has_height_obs = has_gnss or has_leveling
+            if has_height_obs:
                 cov_3x3 = np.zeros((3, 3), dtype=float)
                 indices = []
                 for comp, key in enumerate(['E', 'N', 'H']):
@@ -450,8 +509,9 @@ def adjust_network_mixed(
                     cov_2x2[1, 0] = cov_matrix[in_, ie]
                 point_covs[pid] = cov_2x2
 
-        # Use original height if no GNSS observations
-        point_h = h if has_gnss else p.height
+        # Use adjusted height if GNSS or leveling present, otherwise original
+        has_height_obs = has_gnss or has_leveling
+        point_h = h if has_height_obs else p.height
 
         adjusted_points[pid] = Point(
             id=p.id,
@@ -461,7 +521,7 @@ def adjust_network_mixed(
             height=point_h,
             fixed_easting=p.fixed_easting,
             fixed_northing=p.fixed_northing,
-            fixed_height=p.fixed_height if has_gnss else p.fixed_height,
+            fixed_height=p.fixed_height,
             sigma_easting=sigma_e,
             sigma_northing=sigma_n,
             sigma_height=sigma_h,
@@ -492,6 +552,7 @@ def adjust_network_mixed(
 
         # For classical: Qll_ii = sigma_i^2
         # For GNSS: Qll is block diagonal with covariance blocks
+        # For leveling: Qll_ii = sigma_i^2
 
         B = A_fin @ Qxx
         diag_AQAt = (B * A_fin).sum(axis=1)
@@ -509,6 +570,11 @@ def adjust_network_mixed(
             Qll_diag[row_base + 0] = C[0, 0]
             Qll_diag[row_base + 1] = C[1, 1]
             Qll_diag[row_base + 2] = C[2, 2]
+
+        # Leveling
+        if m_leveling > 0:
+            row_start = m_classical + m_gnss
+            Qll_diag[row_start:row_start + m_leveling] = sigmas_lev_fin ** 2
 
         qvv_diag = Qll_diag - diag_AQAt
         qvv_diag = np.maximum(qvv_diag, 1e-30)
@@ -531,6 +597,9 @@ def adjust_network_mixed(
         Pdiag[row_base + 0] = P_block[0, 0]
         Pdiag[row_base + 1] = P_block[1, 1]
         Pdiag[row_base + 2] = P_block[2, 2]
+    if m_leveling > 0:
+        row_start = m_classical + m_gnss
+        Pdiag[row_start:row_start + m_leveling] = 1.0 / (sigmas_lev_fin ** 2)
 
     # Reliability measures
     r_vals = None
@@ -540,7 +609,7 @@ def adjust_network_mixed(
     if options.compute_reliability and Qxx is not None and qvv_diag is not None and dof > 0:
         r_vals = redundancy_numbers(qvv_diag, Pdiag)
 
-        # Build sigma array for MDB (use observation sigmas for classical, diagonal for GNSS)
+        # Build sigma array for MDB (use observation sigmas for all types)
         sigmas_all = np.zeros(m, dtype=float)
         if m_classical > 0:
             sigmas_all[:m_classical] = sigmas_fin
@@ -549,6 +618,9 @@ def adjust_network_mixed(
             sigmas_all[row_base + 0] = math.sqrt(C[0, 0])
             sigmas_all[row_base + 1] = math.sqrt(C[1, 1])
             sigmas_all[row_base + 2] = math.sqrt(C[2, 2])
+        if m_leveling > 0:
+            row_start = m_classical + m_gnss
+            sigmas_all[row_start:row_start + m_leveling] = sigmas_lev_fin
 
         mdb_vals = mdb_values(k_alpha, k_beta, sigma0_hat, sigmas_all, r_vals)
 
@@ -682,6 +754,45 @@ def adjust_network_mixed(
         if is_flagged:
             flagged.append(obs.id)
 
+    # Process leveling residuals
+    for j, obs in enumerate(leveling_obs):
+        row_idx = m_classical + m_gnss + j
+        res = residuals[row_idx]
+        comp_val = computed_lev_fin[j]
+
+        # Compute standardized residual with safeguard against division by zero
+        qvv_var = qvv_diag[row_idx] * sigma0_sq_post if qvv_diag is not None else 0.0
+        if qvv_var > 1e-30:
+            std = res / math.sqrt(qvv_var)
+        elif sigmas_lev_fin[j] * sigma0_hat > 1e-30:
+            std = res / (sigmas_lev_fin[j] * sigma0_hat)
+        else:
+            std = 0.0  # No redundancy - cannot compute meaningful standardized residual
+
+        is_candidate = abs(float(std)) > float(k_alpha)
+        is_flagged = abs(float(std)) > float(options.outlier_threshold)
+
+        info = ResidualInfo(
+            obs_id=obs.id,
+            obs_type="height_diff",
+            observed=float(obs.value),
+            computed=float(comp_val),
+            residual=float(res),
+            standardized_residual=float(std),
+            redundancy_number=float(r_vals[row_idx]) if r_vals is not None else None,
+            mdb=float(mdb_vals[row_idx]) if mdb_vals is not None else None,
+            external_reliability=float(ext_rel[row_idx]) if ext_rel is not None else None,
+            is_outlier_candidate=is_candidate,
+            flagged=is_flagged,
+            from_point=obs.from_point_id,
+            to_point=obs.to_point_id,
+        )
+
+        std_residuals[obs.id] = float(std)
+        residual_details.append(info)
+        if is_flagged:
+            flagged.append(obs.id)
+
     # Chi-square global test
     chi_test = None
     if dof > 0:
@@ -703,12 +814,25 @@ def adjust_network_mixed(
         vN = residuals[row_base + 1]
         vH = residuals[row_base + 2]
         residuals_dict[obs.id] = math.sqrt(vE**2 + vN**2 + vH**2)
+    for j, obs in enumerate(leveling_obs):
+        row_idx = m_classical + m_gnss + j
+        residuals_dict[obs.id] = float(residuals[row_idx])
 
     messages = []
     if dof == 0:
         messages.append("No redundancy (dof=0): variance factor set to 1.0")
-    if has_gnss and has_classical:
-        messages.append(f"Mixed adjustment: {len(classical_obs)} classical obs + {len(gnss_obs)} GNSS baselines")
+
+    # Build message about observation types
+    obs_parts = []
+    if has_classical:
+        obs_parts.append(f"{len(classical_obs)} classical")
+    if has_gnss:
+        obs_parts.append(f"{len(gnss_obs)} GNSS baselines")
+    if has_leveling:
+        obs_parts.append(f"{len(leveling_obs)} leveling")
+
+    if len(obs_parts) > 1:
+        messages.append(f"Mixed adjustment: {' + '.join(obs_parts)}")
 
     return AdjustmentResult(
         success=True,
@@ -733,39 +857,42 @@ def adjust_network_mixed(
 def _linearize_mixed(
     classical_obs: List[Observation],
     gnss_obs: List[GnssBaselineObservation],
+    leveling_obs: List[HeightDifferenceObservation],
     state: _State,
     index: MixedParameterIndex,
     m: int,
     n: int,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[float], np.ndarray]:
+    m_classical: int,
+    m_gnss: int,
+    m_leveling: int,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, List[float], np.ndarray, List[float]]:
     """Build design matrix A and misclosure vector w for mixed observations.
 
     Returns:
         A: Design matrix (m x n)
         w: Misclosure vector (m,)
-        sigmas: Standard deviations for classical obs (len = len(classical_obs))
-        computed: Computed values for classical obs
-        gnss_l: GNSS misclosure component (len = 3 * len(gnss_obs))
+        sigmas_classical: Standard deviations for classical obs
+        computed_classical: Computed values for classical obs
+        sigmas_leveling: Standard deviations for leveling obs
+        computed_leveling: Computed values for leveling obs
     """
-    m_classical = len(classical_obs)
-    m_gnss = 3 * len(gnss_obs)
-
     A = np.zeros((m, n), dtype=float)
     w = np.zeros(m, dtype=float)
 
-    sigmas = np.zeros(m_classical, dtype=float)
-    computed: List[float] = []
-    gnss_l = np.zeros(m_gnss, dtype=float)
+    sigmas_classical = np.zeros(m_classical, dtype=float)
+    computed_classical: List[float] = []
+    sigmas_leveling = np.zeros(m_leveling, dtype=float)
+    computed_leveling: List[float] = []
 
     # Classical observations (rows 0 to m_classical-1)
     for i, obs in enumerate(classical_obs):
-        sigmas[i] = float(obs.sigma)
+        sigmas_classical[i] = float(obs.sigma)
 
         if isinstance(obs, DistanceObservation):
             e1, n1, _ = state.points[obs.from_point_id]
             e2, n2, _ = state.points[obs.to_point_id]
             comp = distance_2d(e1, n1, e2, n2)
-            computed.append(comp)
+            computed_classical.append(comp)
             w[i] = float(obs.value) - comp
 
             dE1, dN1, dE2, dN2 = distance_partials(e1, n1, e2, n2)
@@ -778,7 +905,7 @@ def _linearize_mixed(
             az = azimuth(e1, n1, e2, n2)
             omega = state.orientations.get(obs.set_id, 0.0)
             comp = wrap_2pi(az + omega)
-            computed.append(comp)
+            computed_classical.append(comp)
             w[i] = wrap_pi(float(obs.value) - (az + omega))
 
             dE1, dN1, dE2, dN2 = azimuth_partials(e1, n1, e2, n2)
@@ -793,7 +920,7 @@ def _linearize_mixed(
             e_from, n_from, _ = state.points[obs.from_point_id]
             e_to, n_to, _ = state.points[obs.to_point_id]
             comp = angle_at_point(e_at, n_at, e_from, n_from, e_to, n_to)
-            computed.append(comp)
+            computed_classical.append(comp)
             w[i] = wrap_pi(float(obs.value) - comp)
 
             dE_from, dN_from, dE_at, dN_at, dE_to, dN_to = angle_partials(
@@ -803,7 +930,7 @@ def _linearize_mixed(
             _set_A_coord(A, i, index, obs.at_point_id, dE_at, dN_at)
             _set_A_coord(A, i, index, obs.to_point_id, dE_to, dN_to)
 
-    # GNSS observations (rows m_classical to m-1)
+    # GNSS observations (rows m_classical to m_classical + m_gnss - 1)
     for i, obs in enumerate(gnss_obs):
         row_base = m_classical + 3 * i
 
@@ -841,11 +968,32 @@ def _linearize_mixed(
         w[row_base + 1] = obs.dN - computed_dN
         w[row_base + 2] = obs.dH - computed_dH
 
-        gnss_l[3 * i + 0] = w[row_base + 0]
-        gnss_l[3 * i + 1] = w[row_base + 1]
-        gnss_l[3 * i + 2] = w[row_base + 2]
+    # Leveling observations (rows m_classical + m_gnss to m - 1)
+    for i, obs in enumerate(leveling_obs):
+        row_idx = m_classical + m_gnss + i
+        sigmas_leveling[i] = float(obs.sigma)
 
-    return A, w, sigmas, computed, gnss_l
+        from_pid = obs.from_point_id
+        to_pid = obs.to_point_id
+
+        _, _, from_H = state.points[from_pid]
+        _, _, to_H = state.points[to_pid]
+
+        # Computed height difference
+        comp = to_H - from_H
+        computed_leveling.append(comp)
+
+        # Misclosure: l = observed - computed
+        w[row_idx] = float(obs.value) - comp
+
+        # Design matrix: dH = H_to - H_from
+        # Partial w.r.t. H_from = -1, H_to = +1
+        if (to_pid, 'H') in index.coord_index:
+            A[row_idx, index.coord_index[(to_pid, 'H')]] = 1.0
+        if (from_pid, 'H') in index.coord_index:
+            A[row_idx, index.coord_index[(from_pid, 'H')]] = -1.0
+
+    return A, w, sigmas_classical, computed_classical, sigmas_leveling, computed_leveling
 
 
 def _set_A_coord(A: np.ndarray, row: int, index: MixedParameterIndex,

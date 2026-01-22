@@ -36,23 +36,41 @@ def _is_gnss_result(result: AdjustmentResult) -> bool:
 
 
 def _is_mixed_result(result: AdjustmentResult) -> bool:
-    """Detect if this is a mixed adjustment (classical + GNSS).
+    """Detect if this is a mixed adjustment (classical + GNSS + leveling).
 
-    Returns True if there are both GNSS and non-GNSS observations.
+    Returns True if there are at least two different categories:
+    - Classical (distance, direction, angle)
+    - GNSS baselines
+    - Leveling (height_diff)
     """
     if not result.residual_details:
         return False
 
     has_gnss = False
     has_classical = False
+    has_leveling = False
 
     for r in result.residual_details:
         if r.obs_type == "gnss_baseline":
             has_gnss = True
+        elif r.obs_type == "height_diff":
+            has_leveling = True
         elif r.obs_type in ("distance", "direction", "angle"):
             has_classical = True
 
-    return has_gnss and has_classical
+    # Mixed if at least two categories present
+    categories = sum([has_gnss, has_classical, has_leveling])
+    return categories >= 2
+
+
+def _has_leveling_observations(result: AdjustmentResult) -> bool:
+    """Check if result contains any leveling (height_diff) observations."""
+    if not result.residual_details:
+        return False
+    for r in result.residual_details:
+        if r.obs_type == "height_diff":
+            return True
+    return False
 
 
 def _has_gnss_observations(result: AdjustmentResult) -> bool:
@@ -74,12 +92,22 @@ def render_html_report(result: AdjustmentResult, title: str | None = None) -> st
     is_gnss = _is_gnss_result(result)
     is_mixed = _is_mixed_result(result)
     has_gnss = _has_gnss_observations(result)
+    has_leveling = _has_leveling_observations(result)
 
     if title is None:
         if is_leveling:
             title = "Leveling Adjustment Report"
         elif is_mixed:
-            title = "Mixed Adjustment Report (Classical + GNSS)"
+            # Build dynamic title based on what's in the mix
+            components = []
+            has_classical = any(r.obs_type in ("distance", "direction", "angle") for r in result.residual_details)
+            if has_classical:
+                components.append("Classical")
+            if has_gnss:
+                components.append("GNSS")
+            if has_leveling:
+                components.append("Leveling")
+            title = f"Mixed Adjustment Report ({' + '.join(components)})"
         elif is_gnss:
             title = "GNSS Baseline Adjustment Report"
         else:
@@ -148,8 +176,8 @@ def render_html_report(result: AdjustmentResult, title: str | None = None) -> st
                 "</tr>"
             )
         parts.append("</tbody></table>")
-    elif is_gnss or is_mixed:
-        # 3D adjustment (GNSS or mixed): show E, N, H with all sigmas
+    elif is_gnss or is_mixed or has_leveling:
+        # 3D adjustment (GNSS, mixed, or with leveling): show E, N, H with all sigmas
         parts.append("<table><thead><tr><th>ID</th><th>Name</th><th>E</th><th>N</th><th>H</th><th>σE</th><th>σN</th><th>σH</th></tr></thead><tbody>")
         for pid in sorted(result.adjusted_points.keys()):
             p = result.adjusted_points[pid]
@@ -248,7 +276,7 @@ def render_html_report(result: AdjustmentResult, title: str | None = None) -> st
             )
         parts.append("</tbody></table>")
     elif is_mixed:
-        # Mixed residuals: classical (scalar) and GNSS (3D) in one table
+        # Mixed residuals: classical (scalar), GNSS (3D), and leveling (scalar) in one table
         parts.append(
             "<table><thead><tr>"
             "<th>ID</th><th>Type</th><th>From</th><th>To</th><th>Obs/Length</th><th>v/|v| (mm)</th><th>w</th>"
@@ -265,6 +293,13 @@ def render_html_report(result: AdjustmentResult, title: str | None = None) -> st
                 v_mm = r.residual * 1000 if r.residual is not None else None
                 obs_val = f"{r.observed:.3f}"
                 v_str = f"{v_mm:.2f}" if v_mm is not None else "-"
+            elif r.obs_type == "height_diff":
+                # Leveling: show ΔH and residual in mm
+                obs_val = f"{r.observed:.4f}"
+                if r.residual is not None:
+                    v_str = f"{r.residual * 1000:.2f}"  # mm
+                else:
+                    v_str = "-"
             else:
                 # Classical: show value and scalar residual
                 obs_val = f"{r.observed:.4f}" if isinstance(r.observed, float) else str(r.observed)

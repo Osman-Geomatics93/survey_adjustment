@@ -699,15 +699,15 @@ class Network:
 
     def validate_mixed(self) -> List[str]:
         """
-        Validate the network for mixed adjustment (classical + GNSS).
+        Validate the network for mixed adjustment (classical + GNSS + leveling).
 
         Checks for:
-        - At least one observation (classical or GNSS)
+        - At least one observation (classical, GNSS, or leveling)
         - Referenced points exist
         - Sufficient datum constraints:
           - For horizontal (E, N): at least one fully fixed point, or 3+ fixed
             components across 2+ points
-          - For height (H): required if GNSS baselines present
+          - For height (H): required if GNSS baselines or leveling observations present
         - Network connectivity
         - Sufficient observations for adjustment
 
@@ -719,18 +719,22 @@ class Network:
         # Get observations by type
         classical_obs: List[Observation] = []
         gnss_obs: List[GnssBaselineObservation] = []
+        leveling_obs: List[HeightDifferenceObservation] = []
 
         for obs in self.get_enabled_observations():
             if isinstance(obs, GnssBaselineObservation):
                 gnss_obs.append(obs)
+            elif isinstance(obs, HeightDifferenceObservation):
+                leveling_obs.append(obs)
             elif isinstance(obs, (DistanceObservation, DirectionObservation, AngleObservation)):
                 classical_obs.append(obs)
 
         has_classical = len(classical_obs) > 0
         has_gnss = len(gnss_obs) > 0
+        has_leveling = len(leveling_obs) > 0
 
-        if not has_classical and not has_gnss:
-            errors.append("Network has no observations (classical or GNSS)")
+        if not has_classical and not has_gnss and not has_leveling:
+            errors.append("Network has no observations (classical, GNSS, or leveling)")
             return errors
 
         # Collect all points referenced in observations
@@ -752,6 +756,10 @@ class Network:
             obs_point_ids.add(obs.from_point_id)
             obs_point_ids.add(obs.to_point_id)
 
+        for obs in leveling_obs:
+            obs_point_ids.add(obs.from_point_id)
+            obs_point_ids.add(obs.to_point_id)
+
         # Check for missing points
         for point_id in obs_point_ids:
             if point_id not in self.points:
@@ -761,6 +769,7 @@ class Network:
             return errors  # Can't continue if points are missing
 
         # Check horizontal datum constraints (E, N)
+        # Only required if we have classical or GNSS (leveling-only doesn't need E, N)
         fixed_e_points: Set[str] = set()
         fixed_n_points: Set[str] = set()
         fixed_h_points: Set[str] = set()
@@ -778,29 +787,40 @@ class Network:
         # Rotation is absorbed by orientation unknowns if directions are present.
         # Minimum requirement: at least one point with fixed E and one point with fixed N
         # (typically the same point - a fully fixed control point)
-        fully_fixed_en = fixed_e_points & fixed_n_points
-
-        if not fixed_e_points:
-            errors.append(
-                "Insufficient horizontal datum: need at least one fixed Easting"
-            )
-        if not fixed_n_points:
-            errors.append(
-                "Insufficient horizontal datum: need at least one fixed Northing"
-            )
-
-        # For height datum: required if GNSS observations present
-        if has_gnss:
-            if not fixed_h_points:
+        # Only check if we have classical or GNSS observations
+        if has_classical or has_gnss:
+            if not fixed_e_points:
                 errors.append(
-                    "No fixed height in network (required when GNSS baselines are present)"
+                    "Insufficient horizontal datum: need at least one fixed Easting"
+                )
+            if not fixed_n_points:
+                errors.append(
+                    "Insufficient horizontal datum: need at least one fixed Northing"
                 )
 
-            # Check all GNSS points have height values
-            for pid in obs_point_ids:
+        # For height datum: required if GNSS or leveling observations present
+        # Points that need H unknowns
+        height_point_ids: Set[str] = set()
+        for obs in gnss_obs:
+            height_point_ids.add(obs.from_point_id)
+            height_point_ids.add(obs.to_point_id)
+        for obs in leveling_obs:
+            height_point_ids.add(obs.from_point_id)
+            height_point_ids.add(obs.to_point_id)
+
+        if has_gnss or has_leveling:
+            # Check for fixed height among points involved in height observations
+            fixed_h_in_height_obs = fixed_h_points & height_point_ids
+            if not fixed_h_in_height_obs:
+                errors.append(
+                    "No fixed height in network (required when GNSS baselines or leveling observations are present)"
+                )
+
+            # Check all height-related points have height values
+            for pid in height_point_ids:
                 point = self.points[pid]
                 if point.height is None:
-                    errors.append(f"Point '{pid}' has no height value (required for GNSS)")
+                    errors.append(f"Point '{pid}' has no height value (required for GNSS/leveling)")
 
         # Check connectivity
         adjacency: Dict[str, Set[str]] = defaultdict(set)
@@ -819,6 +839,10 @@ class Network:
                 adjacency[obs.to_point_id].add(obs.at_point_id)
 
         for obs in gnss_obs:
+            adjacency[obs.from_point_id].add(obs.to_point_id)
+            adjacency[obs.to_point_id].add(obs.from_point_id)
+
+        for obs in leveling_obs:
             adjacency[obs.from_point_id].add(obs.to_point_id)
             adjacency[obs.to_point_id].add(obs.from_point_id)
 
@@ -844,17 +868,21 @@ class Network:
         # Count observations and unknowns
         # Classical: 1 obs each
         # GNSS: 3 obs each (dE, dN, dH)
-        num_obs = len(classical_obs) + 3 * len(gnss_obs)
+        # Leveling: 1 obs each (ΔH)
+        num_obs = len(classical_obs) + 3 * len(gnss_obs) + len(leveling_obs)
 
         # Count unknowns
         num_unknowns = 0
         for pid in obs_point_ids:
             point = self.points[pid]
-            if not point.fixed_easting:
-                num_unknowns += 1
-            if not point.fixed_northing:
-                num_unknowns += 1
-            if has_gnss and not point.fixed_height:
+            # E, N unknowns only for classical or GNSS points
+            if has_classical or has_gnss:
+                if not point.fixed_easting:
+                    num_unknowns += 1
+                if not point.fixed_northing:
+                    num_unknowns += 1
+            # H unknown if point is in height observations and not fixed
+            if pid in height_point_ids and not point.fixed_height:
                 num_unknowns += 1
 
         # Add direction set orientations

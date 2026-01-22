@@ -1,4 +1,4 @@
-"""Adjust Mixed Network (Classical + GNSS) (QGIS Processing algorithm).
+"""Adjust Mixed Network (Classical + GNSS + Leveling) (QGIS Processing algorithm).
 
 This module is intended to run inside QGIS. It remains importable outside QGIS
 via guarded imports, but execution requires QGIS.
@@ -66,6 +66,7 @@ from ..io.observations import (
     parse_angles_csv,
     parse_gnss_baselines_csv,
     parse_gnss_points_csv,
+    parse_leveling_csv,
 )
 
 from ...core.models.options import AdjustmentOptions
@@ -76,7 +77,7 @@ from ...core.geometry import ellipse_polygon_points
 
 
 class AdjustNetworkMixedAlgorithm(QgsProcessingAlgorithm):
-    """Processing algorithm: run mixed least-squares adjustment (classical + GNSS)."""
+    """Processing algorithm: run mixed least-squares adjustment (classical + GNSS + leveling)."""
 
     # Input parameters
     INPUT_POINTS = "POINTS_CSV"
@@ -84,6 +85,7 @@ class AdjustNetworkMixedAlgorithm(QgsProcessingAlgorithm):
     INPUT_DIRECTIONS = "DIRECTIONS_CSV"
     INPUT_ANGLES = "ANGLES_CSV"
     INPUT_GNSS_BASELINES = "GNSS_BASELINES_CSV"
+    INPUT_LEVELING = "LEVELING_CSV"
 
     COMPUTE_RELIABILITY = "COMPUTE_RELIABILITY"
     MAX_ITERATIONS = "MAX_ITERATIONS"
@@ -103,7 +105,7 @@ class AdjustNetworkMixedAlgorithm(QgsProcessingAlgorithm):
         return "adjust_network_mixed"
 
     def displayName(self):  # type: ignore[override]
-        return "Adjust Network (Mixed: Classical + GNSS)"
+        return "Adjust Network (Mixed: Classical + GNSS + Leveling)"
 
     def group(self):  # type: ignore[override]
         return "Survey Adjustment"
@@ -113,14 +115,15 @@ class AdjustNetworkMixedAlgorithm(QgsProcessingAlgorithm):
 
     def shortHelpString(self):  # type: ignore[override]
         return (
-            "Runs a mixed least-squares adjustment combining classical and GNSS observations.\n\n"
+            "Runs a mixed least-squares adjustment combining classical, GNSS, and leveling observations.\n\n"
             "Inputs:\n"
             "- Points CSV with 3D coordinates (point_id, E, N, H, fixed_e, fixed_n, fixed_h)\n"
             "- Distances CSV (optional)\n"
             "- Directions CSV (optional)\n"
             "- Angles CSV (optional)\n"
-            "- GNSS Baselines CSV (optional)\n\n"
-            "At least one observation file (classical or GNSS) must be provided.\n\n"
+            "- GNSS Baselines CSV (optional)\n"
+            "- Leveling CSV (optional)\n\n"
+            "At least one observation file (classical, GNSS, or leveling) must be provided.\n\n"
             "Outputs:\n"
             "- JSON and HTML reports\n"
             "- Adjusted Points layer (with E, N, H and sigmas)\n"
@@ -157,6 +160,11 @@ class AdjustNetworkMixedAlgorithm(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterFile(
             self.INPUT_GNSS_BASELINES,
             "GNSS Baselines CSV (optional)",
+            optional=True,
+        ))
+        self.addParameter(QgsProcessingParameterFile(
+            self.INPUT_LEVELING,
+            "Leveling CSV (optional)",
             optional=True,
         ))
 
@@ -276,6 +284,7 @@ class AdjustNetworkMixedAlgorithm(QgsProcessingAlgorithm):
         directions_path = self.parameterAsFile(parameters, self.INPUT_DIRECTIONS, context)
         angles_path = self.parameterAsFile(parameters, self.INPUT_ANGLES, context)
         gnss_path = self.parameterAsFile(parameters, self.INPUT_GNSS_BASELINES, context)
+        leveling_path = self.parameterAsFile(parameters, self.INPUT_LEVELING, context)
 
         compute_reliability = self.parameterAsBool(parameters, self.COMPUTE_RELIABILITY, context)
         max_iterations = self.parameterAsInt(parameters, self.MAX_ITERATIONS, context)
@@ -287,17 +296,18 @@ class AdjustNetworkMixedAlgorithm(QgsProcessingAlgorithm):
         # Check that at least one observation file is provided
         has_classical = distances_path or directions_path or angles_path
         has_gnss = gnss_path
+        has_leveling = leveling_path
 
-        if not has_classical and not has_gnss:
+        if not has_classical and not has_gnss and not has_leveling:
             raise QgsProcessingException(
-                "At least one observation file (classical or GNSS) must be provided"
+                "At least one observation file (classical, GNSS, or leveling) must be provided"
             )
 
         # Parse input data
         feedback.pushInfo("Parsing input data...")
 
-        # Parse points (use GNSS parser for 3D if GNSS present, otherwise 2D parser)
-        if has_gnss:
+        # Parse points (use GNSS parser for 3D if GNSS or leveling present, otherwise 2D parser)
+        if has_gnss or has_leveling:
             points = parse_gnss_points_csv(points_path)
         else:
             points = parse_points_csv(points_path)
@@ -325,6 +335,12 @@ class AdjustNetworkMixedAlgorithm(QgsProcessingAlgorithm):
         if gnss_path:
             feedback.pushInfo(f"Parsing GNSS baselines from {gnss_path}")
             for obs in parse_gnss_baselines_csv(gnss_path, covariance_format="full"):
+                net.add_observation(obs)
+
+        # Parse leveling observations
+        if leveling_path:
+            feedback.pushInfo(f"Parsing leveling observations from {leveling_path}")
+            for obs in parse_leveling_csv(leveling_path):
                 net.add_observation(obs)
 
         feedback.pushInfo(f"Network: {len(net.points)} points, {len(net.observations)} observations")
