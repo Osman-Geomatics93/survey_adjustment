@@ -21,10 +21,6 @@ about=Production-ready least-squares adjustment plugin for professional surveyin
     - JSON + HTML reports
     - GeoPackage output with adjusted points, ellipses, residual vectors
 
-tracker=https://github.com/osman-ibrahim/survey-adjustment-qgis/issues
-repository=https://github.com/osman-ibrahim/survey-adjustment-qgis
-homepage=https://github.com/osman-ibrahim/survey-adjustment-qgis
-
 tags=surveying, adjustment, least squares, network analysis, GNSS, leveling, geodesy, statistics
 
 category=Analysis
