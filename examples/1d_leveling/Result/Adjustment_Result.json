@@ -1,0 +1,420 @@
+{
+  "metadata": {
+    "plugin_version": "1.0.1",
+    "timestamp": "2026-01-22T21:20:39.978874Z",
+    "network_name": "Leveling Network",
+    "settings_snapshot": {
+      "angle_unit": "degrees",
+      "sigma_angle_unit": "radians",
+      "sigma_leveling_unit": "m",
+      "max_iterations": 50,
+      "convergence_tol": 1e-06,
+      "confidence_level": 0.95,
+      "outlier_threshold": 3.0,
+      "robust_method": "none",
+      "huber_c": 1.5,
+      "danish_c": 2.0,
+      "igg3_k0": 1.5,
+      "igg3_k1": 3.0,
+      "auto_datum_default": false,
+      "ellipse_vertices": 64,
+      "residual_vector_scale": 1000.0,
+      "compute_reliability": true
+    }
+  },
+  "input_summary": {
+    "num_points": 6,
+    "num_fixed_points": 0,
+    "num_observations": 12,
+    "observations_by_type": {
+      "height_diff": 12
+    }
+  },
+  "adjustment": {
+    "success": true,
+    "iterations": 1,
+    "converged": true,
+    "degrees_of_freedom": 8,
+    "variance_factor": 0.011311458007928458,
+    "a_posteriori_sigma0": 0.10635533840822688,
+    "error_message": null,
+    "messages": [],
+    "robust_method": null,
+    "robust_iterations": 0,
+    "robust_converged": true,
+    "robust_message": null
+  },
+  "global_test": {
+    "test_name": "chi_square",
+    "test_statistic": 0.09049166406342767,
+    "critical_lower": 7.108247143265785,
+    "critical_upper": 7.585199733632606,
+    "confidence_level": 0.050000000000000044,
+    "passed": false,
+    "p_value": 3.3684099581318196e-07,
+    "degrees_of_freedom": 8
+  },
+  "datum_summary": {
+    "is_solvable": true,
+    "horizontal": {
+      "status": "ok",
+      "message": "Not required for 1D leveling",
+      "fixed_easting_points": [],
+      "fixed_northing_points": []
+    },
+    "orientation": {
+      "status": "ok",
+      "message": "Not applicable for 1D leveling",
+      "direction_sets": []
+    },
+    "height": {
+      "status": "ok",
+      "message": "Fixed heights: ['BM_A', 'BM_B']",
+      "fixed_height_points": [
+        "BM_A",
+        "BM_B"
+      ],
+      "required": true
+    },
+    "connectivity": {
+      "status": "ok",
+      "message": "All points connected",
+      "disconnected_points": []
+    },
+    "degrees_of_freedom": {
+      "value": 8,
+      "status": "ok",
+      "message": "Redundant: DOF = 8",
+      "num_observations": 12,
+      "num_unknowns": 4
+    },
+    "errors": [],
+    "warnings": [],
+    "applied_constraints": []
+  },
+  "applied_auto_constraints": null,
+  "adjusted_points": [
+    {
+      "id": "BM_A",
+      "name": "BM_A",
+      "easting": 1000.0,
+      "northing": 1000.0,
+      "height": 100.0,
+      "fixed_easting": false,
+      "fixed_northing": false,
+      "fixed_height": true,
+      "sigma_easting": null,
+      "sigma_northing": null,
+      "sigma_height": 0.0
+    },
+    {
+      "id": "BM_B",
+      "name": "BM_B",
+      "easting": 1000.0,
+      "northing": 1500.0,
+      "height": 102.5,
+      "fixed_easting": false,
+      "fixed_northing": false,
+      "fixed_height": true,
+      "sigma_easting": null,
+      "sigma_northing": null,
+      "sigma_height": 0.0
+    },
+    {
+      "id": "TP1",
+      "name": "TP1",
+      "easting": 1000.0,
+      "northing": 1100.0,
+      "height": 100.85009862672999,
+      "fixed_easting": false,
+      "fixed_northing": false,
+      "fixed_height": false,
+      "sigma_easting": null,
+      "sigma_northing": null,
+      "sigma_height": 0.0001094527352758573
+    },
+    {
+      "id": "TP2",
+      "name": "TP2",
+      "easting": 1000.0,
+      "northing": 1200.0,
+      "height": 101.41987433049263,
+      "fixed_easting": false,
+      "fixed_northing": false,
+      "fixed_height": false,
+      "sigma_easting": null,
+      "sigma_northing": null,
+      "sigma_height": 0.00010553453483605882
+    },
+    {
+      "id": "TP3",
+      "name": "TP3",
+      "easting": 1000.0,
+      "northing": 1300.0,
+      "height": 101.98003520432043,
+      "fixed_easting": false,
+      "fixed_northing": false,
+      "fixed_height": false,
+      "sigma_easting": null,
+      "sigma_northing": null,
+      "sigma_height": 0.00011451108682043454
+    },
+    {
+      "id": "TP4",
+      "name": "TP4",
+      "easting": 1000.0,
+      "northing": 1400.0,
+      "height": 102.1498364554731,
+      "fixed_easting": false,
+      "fixed_northing": false,
+      "fixed_height": false,
+      "sigma_easting": null,
+      "sigma_northing": null,
+      "sigma_height": 0.00011013985627957846
+    }
+  ],
+  "error_ellipses": [],
+  "residuals": [
+    {
+      "obs_id": "HD001",
+      "obs_type": "height_diff",
+      "observed": 0.8503,
+      "computed": 0.8500986267299879,
+      "residual": 0.00020137327001201744,
+      "standardized_residual": 0.1845283695712002,
+      "redundancy_number": 0.5292914002786707,
+      "mdb": 0.0007493856481035903,
+      "external_reliability": 0.00035274226907010183,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "BM_A",
+      "to_point": "TP1"
+    },
+    {
+      "obs_id": "HD002",
+      "obs_type": "height_diff",
+      "observed": 0.5698,
+      "computed": 0.5697757037626445,
+      "residual": 2.4296237355447836e-05,
+      "standardized_residual": 0.022237715498547524,
+      "redundancy_number": 0.5305363995501406,
+      "mdb": 0.0007485058474112877,
+      "external_reliability": 0.0001880850495332183,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "TP1",
+      "to_point": "TP2"
+    },
+    {
+      "obs_id": "HD003",
+      "obs_type": "height_diff",
+      "observed": 0.5602,
+      "computed": 0.5601608738277974,
+      "residual": 3.912617220258596e-05,
+      "standardized_residual": 0.03579636861697816,
+      "redundancy_number": 0.5309752311705654,
+      "mdb": 0.0007481964771154665,
+      "external_reliability": 0.00020449533765632273,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "TP2",
+      "to_point": "TP3"
+    },
+    {
+      "obs_id": "HD004",
+      "obs_type": "height_diff",
+      "observed": 0.1698,
+      "computed": 0.16980125115267697,
+      "residual": -1.251152676962075e-06,
+      "standardized_residual": -0.0011748569589347716,
+      "redundancy_number": 0.5040436101953125,
+      "mdb": 0.000767924871226412,
+      "external_reliability": 0.00020524355292775745,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "TP3",
+      "to_point": "TP4"
+    },
+    {
+      "obs_id": "HD005",
+      "obs_type": "height_diff",
+      "observed": 0.3501,
+      "computed": 0.35016354452689313,
+      "residual": -6.354452689311119e-05,
+      "standardized_residual": -0.05855789451438392,
+      "redundancy_number": 0.5233628323192896,
+      "mdb": 0.0007536181541681973,
+      "external_reliability": 0.0003592024225154945,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "TP4",
+      "to_point": "BM_B"
+    },
+    {
+      "obs_id": "HD006",
+      "obs_type": "height_diff",
+      "observed": 1.4198,
+      "computed": 1.4198743304926325,
+      "residual": -7.433049263250169e-05,
+      "standardized_residual": -0.042805177879133724,
+      "redundancy_number": 0.7538438891949923,
+      "mdb": 0.0008372416358565306,
+      "external_reliability": 0.000206092144886466,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "BM_A",
+      "to_point": "TP2"
+    },
+    {
+      "obs_id": "HD007",
+      "obs_type": "height_diff",
+      "observed": 1.1302,
+      "computed": 1.129936577590442,
+      "residual": 0.0002634224095581228,
+      "standardized_residual": 0.15904195456234707,
+      "redundancy_number": 0.6858387763243339,
+      "mdb": 0.0008777695459581875,
+      "external_reliability": 0.000148869593526976,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "TP1",
+      "to_point": "TP3"
+    },
+    {
+      "obs_id": "HD008",
+      "obs_type": "height_diff",
+      "observed": 0.7298,
+      "computed": 0.7299621249804744,
+      "residual": -0.0001621249804744096,
+      "standardized_residual": -0.09654336776993698,
+      "redundancy_number": 0.7050095392671791,
+      "mdb": 0.0008657530500915293,
+      "external_reliability": 0.00013719707917959139,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "TP2",
+      "to_point": "TP4"
+    },
+    {
+      "obs_id": "HD009",
+      "obs_type": "height_diff",
+      "observed": 0.5203,
+      "computed": 0.5199647956795701,
+      "residual": 0.0003352043204298827,
+      "standardized_residual": 0.19888085282491935,
+      "redundancy_number": 0.7101879130964804,
+      "mdb": 0.0008625909326104853,
+      "external_reliability": 0.0002499892783238979,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "TP3",
+      "to_point": "BM_B"
+    },
+    {
+      "obs_id": "HD010",
+      "obs_type": "height_diff",
+      "observed": 2.4997,
+      "computed": 2.5,
+      "residual": -0.000300000000000189,
+      "standardized_residual": -0.1200000000000756,
+      "redundancy_number": 1.0,
+      "mdb": 0.0009086602709224181,
+      "external_reliability": 0.0,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "BM_A",
+      "to_point": "BM_B"
+    },
+    {
+      "obs_id": "HD011",
+      "obs_type": "height_diff",
+      "observed": 1.2998,
+      "computed": 1.299737828743119,
+      "residual": 6.217125688112723e-05,
+      "standardized_residual": 0.033067615078735346,
+      "redundancy_number": 0.7303452109212237,
+      "mdb": 0.0009356644287689391,
+      "external_reliability": 0.00012744256567308315,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "TP1",
+      "to_point": "TP4"
+    },
+    {
+      "obs_id": "HD012",
+      "obs_type": "height_diff",
+      "observed": 1.0802,
+      "computed": 1.0801256695073675,
+      "residual": 7.433049263250169e-05,
+      "standardized_residual": 0.03785590789937288,
+      "redundancy_number": 0.7965651976818118,
+      "mdb": 0.0008959289046446387,
+      "external_reliability": 0.00018226311960753286,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "TP2",
+      "to_point": "BM_B"
+    }
+  ],
+  "flagged_observations": [],
+  "covariance_matrix": [
+    [
+      1.1979901259366897e-08,
+      5.584612123133182e-09,
+      5.439102153428564e-09,
+      4.673887647937201e-09
+    ],
+    [
+      5.584612123133182e-09,
+      1.1137538043063312e-08,
+      6.156640299476141e-09,
+      4.960618573537216e-09
+    ],
+    [
+      5.439102153428565e-09,
+      6.156640299476141e-09,
+      1.3112789004797097e-08,
+      6.310549861372188e-09
+    ],
+    [
+      4.673887647937202e-09,
+      4.960618573537215e-09,
+      6.310549861372188e-09,
+      1.21307879412862e-08
+    ]
+  ],
+  "point_covariances": {
+    "TP1": [
+      [
+        1.1979901259366897e-08
+      ]
+    ],
+    "TP2": [
+      [
+        1.1137538043063312e-08
+      ]
+    ],
+    "TP3": [
+      [
+        1.3112789004797097e-08
+      ]
+    ],
+    "TP4": [
+      [
+        1.21307879412862e-08
+      ]
+    ]
+  }
+}

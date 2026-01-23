@@ -1,0 +1,7 @@
+point_id,easting,northing,height,fixed_e,fixed_n,fixed_h
+BASE,500000.000,4500000.000,150.000,true,true,true
+REF2,500500.000,4500000.000,152.500,true,true,true
+GPS1,500150.000,4500200.000,155.200,false,false,false
+GPS2,500350.000,4500250.000,148.800,false,false,false
+GPS3,500250.000,4500400.000,162.100,false,false,false
+GPS4,500400.000,4500150.000,145.500,false,false,false

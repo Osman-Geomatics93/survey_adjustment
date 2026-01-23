@@ -106,6 +106,158 @@ Learn how to use every feature of the plugin with these comprehensive video guid
 
 ---
 
+## Sample Data & Examples
+
+Get started immediately with ready-to-use test datasets. All examples include input CSV files and expected results.
+
+### Download Sample Data
+
+| Dataset | Description | Contents | Link |
+|:--------|:------------|:---------|:-----|
+| **1D Leveling** | Benchmark network with 6 points | Points + 12 height differences | [View](examples/1d_leveling/) |
+| **2D Traverse** | Classical traverse with 5 stations | Points + distances + directions + angles | [View](examples/2d_traverse/) |
+| **2D Trilateration** | Distance-only network | Points + distances | [View](examples/2d_trilateration/) |
+| **3D GNSS** | GNSS baseline network with 6 points | Points + 13 baselines with covariance | [View](examples/3d_gnss/) |
+| **Mixed Network** | Combined multi-technique survey | Classical + GNSS + leveling | [View](examples/mixed_network/) |
+
+> **Tip:** Download the entire [`examples/`](examples/) folder to try all datasets.
+
+---
+
+## Example Outputs
+
+See what results look like from each adjustment type:
+
+### 1D Leveling Adjustment Result
+
+```
+Leveling Adjustment Report
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Status: ✓ Success | Converged | Iterations: 1 | DOF: 8 | σ₀² = 0.0113
+
+Constraint Health Summary
+┌──────────────────┬────────┬─────────────────────────────────────────┐
+│ Category         │ Status │ Details                                 │
+├──────────────────┼────────┼─────────────────────────────────────────┤
+│ Height Datum     │ ✓ OK   │ Fixed heights: [BM_A, BM_B]             │
+│ Connectivity     │ ✓ OK   │ All points connected                    │
+│ Degrees of Freedom│ ✓ OK  │ Redundant: DOF = 8 (12 obs, 4 unknowns) │
+└──────────────────┴────────┴─────────────────────────────────────────┘
+
+Adjusted Points
+┌────────┬───────────┬───────────┬───────┐
+│ ID     │ H (m)     │ σH (m)    │ Fixed │
+├────────┼───────────┼───────────┼───────┤
+│ BM_A   │ 100.0000  │ 0.0000    │ Yes   │
+│ BM_B   │ 102.5000  │ 0.0000    │ Yes   │
+│ TP1    │ 100.8501  │ 0.0001    │ No    │
+│ TP2    │ 101.4199  │ 0.0001    │ No    │
+│ TP3    │ 101.9800  │ 0.0001    │ No    │
+│ TP4    │ 102.1498  │ 0.0001    │ No    │
+└────────┴───────────┴───────────┴───────┘
+```
+
+### 2D Network Adjustment Result
+
+```
+Survey Adjustment Report
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Status: ✓ Success | Converged | Iterations: 2 | DOF: 13 | σ₀² = 0.193
+
+Constraint Health Summary
+┌──────────────────┬────────┬─────────────────────────────────────────┐
+│ Category         │ Status │ Details                                 │
+├──────────────────┼────────┼─────────────────────────────────────────┤
+│ Horizontal Datum │ ✓ OK   │ Fixed E: [CP1, CP2], Fixed N: [CP1, CP2]│
+│ Orientation      │ ✓ OK   │ 4 direction set(s), rotation constrained│
+│ Connectivity     │ ✓ OK   │ All points connected                    │
+│ Degrees of Freedom│ ✓ OK  │ Redundant: DOF = 13 (23 obs, 10 unknowns)│
+└──────────────────┴────────┴─────────────────────────────────────────┘
+
+Adjusted Points
+┌────────┬────────────┬────────────┬────────┬────────┐
+│ ID     │ E          │ N          │ σE     │ σN     │
+├────────┼────────────┼────────────┼────────┼────────┤
+│ CP1    │ 1000.0000  │ 2000.0000  │ 0.0000 │ 0.0000 │
+│ CP2    │ 1500.0000  │ 2000.0000  │ 0.0000 │ 0.0000 │
+│ T1     │ 1100.0028  │ 2150.0026  │ 0.0014 │ 0.0014 │
+│ T2     │ 1250.0020  │ 2250.0014  │ 0.0018 │ 0.0013 │
+│ T3     │ 1400.0037  │ 2150.0001  │ 0.0015 │ 0.0013 │
+└────────┴────────────┴────────────┴────────┴────────┘
+
+Error Ellipses (95% Confidence)
+┌────────┬──────────┬──────────┬──────────┐
+│ Point  │ a (m)    │ b (m)    │ θ (deg)  │
+├────────┼──────────┼──────────┼──────────┤
+│ T1     │ 0.0043   │ 0.0025   │ 226.37   │
+│ T2     │ 0.0045   │ 0.0031   │ 259.35   │
+│ T3     │ 0.0041   │ 0.0027   │ 307.28   │
+└────────┴──────────┴──────────┴──────────┘
+```
+
+### 3D GNSS Baseline Adjustment Result
+
+```
+GNSS Baseline Adjustment Report
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Status: ✓ Success | Converged | Iterations: 1 | DOF: 27 | σ₀² = 0.006
+
+Adjusted Points
+┌────────┬──────────────┬──────────────┬──────────┬────────┬────────┬────────┐
+│ ID     │ E            │ N            │ H        │ σE     │ σN     │ σH     │
+├────────┼──────────────┼──────────────┼──────────┼────────┼────────┼────────┤
+│ BASE   │ 500000.0000  │ 4500000.0000 │ 150.0000 │ 0.0000 │ 0.0000 │ 0.0000 │
+│ GPS1   │ 500150.0024  │ 4500200.0022 │ 155.2032 │ 0.0002 │ 0.0002 │ 0.0005 │
+│ GPS2   │ 500350.0012  │ 4500249.9986 │ 148.8018 │ 0.0002 │ 0.0002 │ 0.0005 │
+│ GPS3   │ 500249.9987  │ 4500400.0028 │ 162.1042 │ 0.0002 │ 0.0002 │ 0.0005 │
+│ GPS4   │ 500400.0010  │ 4500149.9972 │ 145.5031 │ 0.0002 │ 0.0002 │ 0.0006 │
+│ REF2   │ 500500.0000  │ 4500000.0000 │ 152.5000 │ 0.0000 │ 0.0000 │ 0.0000 │
+└────────┴──────────────┴──────────────┴──────────┴────────┴────────┴────────┘
+
+Baseline Residuals
+┌────────┬────────┬────────┬─────────────┬──────────┬───────┬───────┐
+│ ID     │ From   │ To     │ Length (m)  │ |v| (mm) │ w_max │ Flag  │
+├────────┼────────┼────────┼─────────────┼──────────┼───────┼───────┤
+│ BL001  │ BASE   │ GPS1   │ 250.057     │ 0.57     │ 1.700 │       │
+│ BL002  │ BASE   │ GPS2   │ 430.118     │ 0.40     │ 0.485 │       │
+│ BL011  │ GPS1   │ GPS3   │ 223.711     │ 0.77     │ 2.678 │ ⚑     │
+└────────┴────────┴────────┴─────────────┴──────────┴───────┴───────┘
+```
+
+### Mixed Adjustment Result (Classical + GNSS + Leveling)
+
+```
+Mixed Adjustment Report
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Status: ✓ Success | Converged | Iterations: 3 | DOF: 25 | σ₀² = 0.155
+
+Observation Mix: 16 classical + 6 GNSS baselines + 7 leveling
+
+Adjusted Points
+┌────────┬────────────┬────────────┬──────────┬────────┬────────┬────────┐
+│ ID     │ E          │ N          │ H        │ σE     │ σN     │ σH     │
+├────────┼────────────┼────────────┼──────────┼────────┼────────┼────────┤
+│ BM01   │ 10200.0000 │ 20000.0000 │ 502.5000 │ 0.0000 │ 0.0000 │ 0.0000 │
+│ CORS   │ 10000.0000 │ 20000.0000 │ 500.0000 │ 0.0000 │ 0.0000 │ 0.0000 │
+│ TS01   │ 10100.0001 │ 20099.9986 │ 501.8005 │ 0.0010 │ 0.0010 │ 0.0004 │
+│ TS02   │ 10150.0009 │ 20200.0013 │ 503.2008 │ 0.0010 │ 0.0011 │ 0.0006 │
+│ TS03   │ 10249.9987 │ 20150.0002 │ 502.1002 │ 0.0010 │ 0.0009 │ 0.0005 │
+│ TS04   │ 10300.0018 │ 20249.9998 │ 504.5007 │ 0.0010 │ 0.0010 │ 0.0006 │
+└────────┴────────────┴────────────┴──────────┴────────┴────────┴────────┘
+
+Residuals Summary (flagged observations)
+┌────────┬──────────┬────────┬────────┬──────────┬───────┬───────┐
+│ ID     │ Type     │ From   │ To     │ v (mm)   │ w     │ Flag  │
+├────────┼──────────┼────────┼────────┼──────────┼───────┼───────┤
+│ D003   │ distance │ TS03   │ TS04   │ 3.62     │ 2.904 │ ⚑     │
+│ D005   │ distance │ TS02   │ TS04   │ -5.25    │ -3.271│ ⚑     │
+└────────┴──────────┴────────┴────────┴──────────┴───────┴───────┘
+```
+
+> View complete HTML reports in the [`examples/`](examples/) folder for full details including all residuals, reliability metrics, and error ellipses.
+
+---
+
 ## Installation
 
 ### Method 1: QGIS Plugin Manager (Recommended)

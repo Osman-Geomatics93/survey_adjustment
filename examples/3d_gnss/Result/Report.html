@@ -1,0 +1,64 @@
+<!doctype html>
+<html><head><meta charset='utf-8'>
+<title>GNSS Baseline Adjustment Report</title>
+<style>
+    body { font-family: Arial, sans-serif; margin: 24px; }
+    h1 { margin-bottom: 4px; }
+    .meta { color: #555; margin-bottom: 16px; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0 24px 0; }
+    th, td { border: 1px solid #ddd; padding: 6px 8px; font-size: 13px; }
+    th { background: #f5f5f5; text-align: left; }
+    .ok { color: #067d00; font-weight: bold; }
+    .bad { color: #b00020; font-weight: bold; }
+    .flag { background: #fff3cd; }
+    .small { font-size: 12px; color: #666; }
+    </style>
+</head><body>
+<h1>GNSS Baseline Adjustment Report</h1>
+<div class='meta'>Success: <span class='ok'>True</span> | Converged: <span class='ok'>True</span> | Iterations: 1 | DOF: 27 | σ₀²: 0.006147249430925398</div>
+<h2>Constraint Health Summary</h2>
+<table><thead><tr><th>Category</th><th>Status</th><th>Details</th></tr></thead><tbody>
+<tr><td>Horizontal Datum</td><td class='ok'>OK</td><td>Fixed E: [&#x27;BASE&#x27;, &#x27;REF2&#x27;], Fixed N: [&#x27;BASE&#x27;, &#x27;REF2&#x27;]</td></tr>
+<tr><td>Orientation</td><td class='ok'>OK</td><td>Not applicable for GNSS baselines</td></tr>
+<tr><td>Height Datum</td><td class='ok'>OK</td><td>Fixed heights: [&#x27;BASE&#x27;, &#x27;REF2&#x27;]</td></tr>
+<tr><td>Connectivity</td><td class='ok'>OK</td><td>All points connected</td></tr>
+<tr><td>Degrees of Freedom</td><td class='ok'>OK (27)</td><td>Redundant: DOF = 27 (39 obs, 12 unknowns)</td></tr>
+</tbody></table>
+<h2>Chi-square Global Test</h2>
+<table><thead><tr><th>Statistic</th><th>Lower</th><th>Upper</th><th>p-value</th><th>DOF</th><th>Passed</th></tr></thead><tbody>
+<tr><td>0.16597573463498574</td><td>25.88481765215317</td><td>26.79309332983463</td><td>2.0450797992350856e-25</td><td>27</td><td class='bad'>False</td></tr>
+</tbody></table>
+<h2>Adjusted Points</h2>
+<table><thead><tr><th>ID</th><th>Name</th><th>E</th><th>N</th><th>H</th><th>σE</th><th>σN</th><th>σH</th></tr></thead><tbody>
+<tr><td>BASE</td><td>BASE</td><td>500000.0000</td><td>4500000.0000</td><td>150.0000</td><td>0.0000</td><td>0.0000</td><td>0.0000</td></tr>
+<tr><td>GPS1</td><td>GPS1</td><td>500150.0024</td><td>4500200.0022</td><td>155.2032</td><td>0.0002</td><td>0.0002</td><td>0.0005</td></tr>
+<tr><td>GPS2</td><td>GPS2</td><td>500350.0012</td><td>4500249.9986</td><td>148.8018</td><td>0.0002</td><td>0.0002</td><td>0.0005</td></tr>
+<tr><td>GPS3</td><td>GPS3</td><td>500249.9987</td><td>4500400.0028</td><td>162.1042</td><td>0.0002</td><td>0.0002</td><td>0.0005</td></tr>
+<tr><td>GPS4</td><td>GPS4</td><td>500400.0010</td><td>4500149.9972</td><td>145.5031</td><td>0.0002</td><td>0.0002</td><td>0.0006</td></tr>
+<tr><td>REF2</td><td>REF2</td><td>500500.0000</td><td>4500000.0000</td><td>152.5000</td><td>0.0000</td><td>0.0000</td><td>0.0000</td></tr>
+</tbody></table>
+<h2>Error Ellipses</h2>
+<table><thead><tr><th>Point</th><th>a (m)</th><th>b (m)</th><th>θ (deg)</th><th>Confidence</th></tr></thead><tbody>
+<tr><td>GPS1</td><td>0.0005</td><td>0.0004</td><td>-135.00</td><td>0.950</td></tr>
+<tr><td>GPS2</td><td>0.0004</td><td>0.0004</td><td>-135.00</td><td>0.950</td></tr>
+<tr><td>GPS3</td><td>0.0005</td><td>0.0004</td><td>-135.00</td><td>0.950</td></tr>
+<tr><td>GPS4</td><td>0.0005</td><td>0.0004</td><td>-135.00</td><td>0.950</td></tr>
+</tbody></table>
+<h2>Residuals</h2>
+<table><thead><tr><th>ID</th><th>From</th><th>To</th><th>Length (m)</th><th>|v| (mm)</th><th>w_max</th><th>r</th><th>Flag</th></tr></thead><tbody>
+<tr class=''><td>BL001</td><td>BASE</td><td>GPS1</td><td>250.057</td><td>0.57</td><td>1.700</td><td>0.695</td><td></td></tr>
+<tr class=''><td>BL002</td><td>BASE</td><td>GPS2</td><td>430.118</td><td>0.40</td><td>0.485</td><td>0.741</td><td></td></tr>
+<tr class=''><td>BL003</td><td>BASE</td><td>GPS3</td><td>471.856</td><td>0.49</td><td>1.576</td><td>0.695</td><td></td></tr>
+<tr class=''><td>BL004</td><td>BASE</td><td>GPS4</td><td>427.224</td><td>0.52</td><td>1.130</td><td>0.629</td><td></td></tr>
+<tr class=''><td>BL005</td><td>REF2</td><td>GPS1</td><td>403.121</td><td>0.41</td><td>0.774</td><td>0.695</td><td></td></tr>
+<tr class=''><td>BL006</td><td>REF2</td><td>GPS2</td><td>291.570</td><td>0.73</td><td>2.249</td><td>0.741</td><td></td></tr>
+<tr class=''><td>BL007</td><td>REF2</td><td>GPS3</td><td>471.800</td><td>0.57</td><td>1.119</td><td>0.695</td><td></td></tr>
+<tr class=''><td>BL008</td><td>REF2</td><td>GPS4</td><td>180.410</td><td>0.56</td><td>1.703</td><td>0.629</td><td></td></tr>
+<tr class=''><td>BL009</td><td>GPS1</td><td>GPS2</td><td>206.253</td><td>0.21</td><td>0.508</td><td>0.664</td><td></td></tr>
+<tr class=''><td>BL010</td><td>GPS2</td><td>GPS3</td><td>180.773</td><td>0.68</td><td>2.135</td><td>0.664</td><td></td></tr>
+<tr class='flag'><td>BL011</td><td>GPS1</td><td>GPS3</td><td>223.711</td><td>0.77</td><td>2.678</td><td>0.644</td><td>⚑</td></tr>
+<tr class=''><td>BL012</td><td>GPS2</td><td>GPS4</td><td>111.853</td><td>0.20</td><td>0.647</td><td>0.610</td><td></td></tr>
+<tr class=''><td>BL013</td><td>BASE</td><td>REF2</td><td>500.006</td><td>0.57</td><td>1.841</td><td>1.006</td><td></td></tr>
+</tbody></table>
+<div class='small'>Generated by Survey Adjustment core engine</div>
+</body></html>

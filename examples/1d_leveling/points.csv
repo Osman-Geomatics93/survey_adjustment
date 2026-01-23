@@ -1,0 +1,7 @@
+point_id,easting,northing,height,fixed_e,fixed_n,fixed_h
+BM_A,1000.000,1000.000,100.000,false,false,true
+BM_B,1000.000,1500.000,102.500,false,false,true
+TP1,1000.000,1100.000,100.850,false,false,false
+TP2,1000.000,1200.000,101.420,false,false,false
+TP3,1000.000,1300.000,101.980,false,false,false
+TP4,1000.000,1400.000,102.150,false,false,false

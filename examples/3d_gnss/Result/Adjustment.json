@@ -1,0 +1,667 @@
+{
+  "metadata": {
+    "plugin_version": "1.0.2",
+    "timestamp": "2026-01-22T22:41:43.785646Z",
+    "network_name": "GNSS Baseline Network",
+    "settings_snapshot": {
+      "angle_unit": "degrees",
+      "sigma_angle_unit": "radians",
+      "sigma_leveling_unit": "m",
+      "max_iterations": 50,
+      "convergence_tol": 1e-06,
+      "confidence_level": 0.95,
+      "outlier_threshold": 3.0,
+      "robust_method": "none",
+      "huber_c": 1.5,
+      "danish_c": 2.0,
+      "igg3_k0": 1.5,
+      "igg3_k1": 3.0,
+      "auto_datum_default": false,
+      "ellipse_vertices": 64,
+      "residual_vector_scale": 1000.0,
+      "compute_reliability": true
+    }
+  },
+  "input_summary": {
+    "num_points": 6,
+    "num_fixed_points": 2,
+    "num_observations": 13,
+    "observations_by_type": {
+      "gnss_baseline": 13
+    }
+  },
+  "adjustment": {
+    "success": true,
+    "iterations": 1,
+    "converged": true,
+    "degrees_of_freedom": 27,
+    "variance_factor": 0.006147249430925398,
+    "a_posteriori_sigma0": 0.07840439675761429,
+    "error_message": null,
+    "messages": [],
+    "robust_method": null,
+    "robust_iterations": 0,
+    "robust_converged": true,
+    "robust_message": null
+  },
+  "global_test": {
+    "test_name": "chi_square",
+    "test_statistic": 0.16597573463498574,
+    "critical_lower": 25.88481765215317,
+    "critical_upper": 26.79309332983463,
+    "confidence_level": 0.050000000000000044,
+    "passed": false,
+    "p_value": 2.0450797992350856e-25,
+    "degrees_of_freedom": 27
+  },
+  "datum_summary": {
+    "is_solvable": true,
+    "horizontal": {
+      "status": "ok",
+      "message": "Fixed E: ['BASE', 'REF2'], Fixed N: ['BASE', 'REF2']",
+      "fixed_easting_points": [
+        "BASE",
+        "REF2"
+      ],
+      "fixed_northing_points": [
+        "BASE",
+        "REF2"
+      ]
+    },
+    "orientation": {
+      "status": "ok",
+      "message": "Not applicable for GNSS baselines",
+      "direction_sets": []
+    },
+    "height": {
+      "status": "ok",
+      "message": "Fixed heights: ['BASE', 'REF2']",
+      "fixed_height_points": [
+        "BASE",
+        "REF2"
+      ],
+      "required": true
+    },
+    "connectivity": {
+      "status": "ok",
+      "message": "All points connected",
+      "disconnected_points": []
+    },
+    "degrees_of_freedom": {
+      "value": 27,
+      "status": "ok",
+      "message": "Redundant: DOF = 27",
+      "num_observations": 39,
+      "num_unknowns": 12
+    },
+    "errors": [],
+    "warnings": [],
+    "applied_constraints": []
+  },
+  "applied_auto_constraints": null,
+  "adjusted_points": [
+    {
+      "id": "BASE",
+      "name": "BASE",
+      "easting": 500000.0,
+      "northing": 4500000.0,
+      "height": 150.0,
+      "fixed_easting": true,
+      "fixed_northing": true,
+      "fixed_height": true,
+      "sigma_easting": 0.0,
+      "sigma_northing": 0.0,
+      "sigma_height": 0.0
+    },
+    {
+      "id": "REF2",
+      "name": "REF2",
+      "easting": 500500.0,
+      "northing": 4500000.0,
+      "height": 152.5,
+      "fixed_easting": true,
+      "fixed_northing": true,
+      "fixed_height": true,
+      "sigma_easting": 0.0,
+      "sigma_northing": 0.0,
+      "sigma_height": 0.0
+    },
+    {
+      "id": "GPS1",
+      "name": "GPS1",
+      "easting": 500150.0024009406,
+      "northing": 4500200.002241453,
+      "height": 155.20315328847963,
+      "fixed_easting": false,
+      "fixed_northing": false,
+      "fixed_height": false,
+      "sigma_easting": 0.00017578013849368378,
+      "sigma_northing": 0.00017578013849368375,
+      "sigma_height": 0.0005226350927395803
+    },
+    {
+      "id": "GPS2",
+      "name": "GPS2",
+      "easting": 500350.0012215758,
+      "northing": 4500249.998597131,
+      "height": 148.8018082470016,
+      "fixed_easting": false,
+      "fixed_northing": false,
+      "fixed_height": false,
+      "sigma_easting": 0.00016272010162273078,
+      "sigma_northing": 0.00016272010162273075,
+      "sigma_height": 0.000483111323043387
+    },
+    {
+      "id": "GPS3",
+      "name": "GPS3",
+      "easting": 500249.99872245284,
+      "northing": 4500400.002790597,
+      "height": 162.1042329131968,
+      "fixed_easting": false,
+      "fixed_northing": false,
+      "fixed_height": false,
+      "sigma_easting": 0.00017578013849368378,
+      "sigma_northing": 0.00017578013849368375,
+      "sigma_height": 0.0005226350927395803
+    },
+    {
+      "id": "GPS4",
+      "name": "GPS4",
+      "easting": 500400.0010050308,
+      "northing": 4500149.997220818,
+      "height": 145.503105551322,
+      "fixed_easting": false,
+      "fixed_northing": false,
+      "fixed_height": false,
+      "sigma_easting": 0.00019309263526093282,
+      "sigma_northing": 0.00019309263526093277,
+      "sigma_height": 0.0005754895208570993
+    }
+  ],
+  "error_ellipses": [
+    {
+      "point_id": "GPS4",
+      "semi_major_m": 0.0005024568980585591,
+      "semi_minor_m": 0.00044081489354772804,
+      "orientation_rad": -2.356194490192346,
+      "orientation_deg": -135.00000000000009,
+      "confidence_level": 0.95
+    },
+    {
+      "point_id": "GPS1",
+      "semi_major_m": 0.00045779828168085067,
+      "semi_minor_m": 0.00040084554418422436,
+      "orientation_rad": -2.3561944901923453,
+      "orientation_deg": -135.00000000000003,
+      "confidence_level": 0.95
+    },
+    {
+      "point_id": "GPS2",
+      "semi_major_m": 0.00042400409926768876,
+      "semi_minor_m": 0.00037081329655651746,
+      "orientation_rad": -2.3561944901923453,
+      "orientation_deg": -135.00000000000003,
+      "confidence_level": 0.95
+    },
+    {
+      "point_id": "GPS3",
+      "semi_major_m": 0.00045779828168085067,
+      "semi_minor_m": 0.00040084554418422436,
+      "orientation_rad": -2.3561944901923453,
+      "orientation_deg": -135.00000000000003,
+      "confidence_level": 0.95
+    }
+  ],
+  "residuals": [
+    {
+      "obs_id": "BL001",
+      "obs_type": "gnss_baseline",
+      "observed": 250.05708632578282,
+      "computed": 250.05737277346364,
+      "residual": 0.0005700022252907383,
+      "standardized_residual": 1.6996912545183054,
+      "redundancy_number": 0.6953016994206959,
+      "mdb": null,
+      "external_reliability": null,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "BASE",
+      "to_point": "GPS1"
+    },
+    {
+      "obs_id": "BL002",
+      "obs_type": "gnss_baseline",
+      "observed": 430.11803580939267,
+      "computed": 430.1181109131939,
+      "residual": 0.0004041910173045548,
+      "standardized_residual": 0.48523564536998104,
+      "redundancy_number": 0.7407326060445142,
+      "mdb": null,
+      "external_reliability": null,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "BASE",
+      "to_point": "GPS2"
+    },
+    {
+      "obs_id": "BL003",
+      "obs_type": "gnss_baseline",
+      "observed": 471.85641770768575,
+      "computed": 471.85602271039517,
+      "residual": 0.0004949338532703342,
+      "standardized_residual": 1.5762901110205698,
+      "redundancy_number": 0.6953016994206959,
+      "mdb": null,
+      "external_reliability": null,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "BASE",
+      "to_point": "GPS3"
+    },
+    {
+      "obs_id": "BL004",
+      "obs_type": "gnss_baseline",
+      "observed": 427.2237218590981,
+      "computed": 427.2238199567738,
+      "residual": 0.0005249476274559107,
+      "standardized_residual": 1.1297157164180067,
+      "redundancy_number": 0.6294413275880367,
+      "mdb": null,
+      "external_reliability": null,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "BASE",
+      "to_point": "GPS4"
+    },
+    {
+      "obs_id": "BL005",
+      "obs_type": "gnss_baseline",
+      "observed": 403.121129609352,
+      "computed": 403.12097808393617,
+      "residual": 0.0004085440352195259,
+      "standardized_residual": 0.7736651867265308,
+      "redundancy_number": 0.6953016994206959,
+      "mdb": null,
+      "external_reliability": null,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "REF2",
+      "to_point": "GPS1"
+    },
+    {
+      "obs_id": "BL006",
+      "obs_type": "gnss_baseline",
+      "observed": 291.56959530297394,
+      "computed": 291.5692177142939,
+      "residual": 0.0007321114403709809,
+      "standardized_residual": 2.2486631300384445,
+      "redundancy_number": 0.7407326060445142,
+      "mdb": null,
+      "external_reliability": null,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "REF2",
+      "to_point": "GPS2"
+    },
+    {
+      "obs_id": "BL007",
+      "obs_type": "gnss_baseline",
+      "observed": 471.79972762067166,
+      "computed": 471.79986493285685,
+      "residual": 0.0005668737743428148,
+      "standardized_residual": 1.118863071887438,
+      "redundancy_number": 0.6953016994206959,
+      "mdb": null,
+      "external_reliability": null,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "REF2",
+      "to_point": "GPS3"
+    },
+    {
+      "obs_id": "BL008",
+      "obs_type": "gnss_baseline",
+      "observed": 180.40997982240341,
+      "computed": 180.41042591791097,
+      "residual": 0.0005553938617604981,
+      "standardized_residual": 1.7028482358997885,
+      "redundancy_number": 0.6294413275880367,
+      "mdb": null,
+      "external_reliability": null,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "REF2",
+      "to_point": "GPS4"
+    },
+    {
+      "obs_id": "BL009",
+      "obs_type": "gnss_baseline",
+      "observed": 206.25263444605986,
+      "computed": 206.2526146619411,
+      "residual": 0.00021275997669954413,
+      "standardized_residual": 0.5080315452062353,
+      "redundancy_number": 0.664069561955161,
+      "mdb": null,
+      "external_reliability": null,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "GPS1",
+      "to_point": "GPS2"
+    },
+    {
+      "obs_id": "BL010",
+      "obs_type": "gnss_baseline",
+      "observed": 180.77288661226274,
+      "computed": 180.77254324222872,
+      "residual": 0.0006804652908133082,
+      "standardized_residual": 2.135074550154515,
+      "redundancy_number": 0.664069561955161,
+      "mdb": null,
+      "external_reliability": null,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "GPS2",
+      "to_point": "GPS3"
+    },
+    {
+      "obs_id": "BL011",
+      "obs_type": "gnss_baseline",
+      "observed": 223.71139125203257,
+      "computed": 223.71211159416046,
+      "residual": 0.0007684219806463712,
+      "standardized_residual": 2.6781394509582954,
+      "redundancy_number": 0.6435358888411087,
+      "mdb": null,
+      "external_reliability": null,
+      "is_outlier_candidate": true,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "GPS1",
+      "to_point": "GPS3"
+    },
+    {
+      "obs_id": "BL012",
+      "obs_type": "gnss_baseline",
+      "observed": 111.85303787971071,
+      "computed": 111.85318524544388,
+      "residual": 0.00020205988165134583,
+      "standardized_residual": 0.6467613289849936,
+      "redundancy_number": 0.6099517172886721,
+      "mdb": null,
+      "external_reliability": null,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "GPS2",
+      "to_point": "GPS4"
+    },
+    {
+      "obs_id": "BL013",
+      "obs_type": "gnss_baseline",
+      "observed": 500.00605096371584,
+      "computed": 500.00624996093796,
+      "residual": 0.0005744562646561067,
+      "standardized_residual": 1.8409371574354854,
+      "redundancy_number": 1.0056497175141244,
+      "mdb": null,
+      "external_reliability": null,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "BASE",
+      "to_point": "REF2"
+    }
+  ],
+  "flagged_observations": [],
+  "covariance_matrix": [
+    [
+      3.089865708885865e-08,
+      4.080981872887581e-09,
+      2.265408571592504e-09,
+      7.566721325097118e-09,
+      8.730497225339067e-10,
+      3.6213327474520643e-10,
+      8.549362868300203e-09,
+      9.822845544376216e-10,
+      4.0305626291782826e-10,
+      2.1632541651472247e-09,
+      2.1093328106628722e-10,
+      4.302660620716246e-11
+    ],
+    [
+      4.080981872887581e-09,
+      3.0898657088858644e-08,
+      2.265408571592504e-09,
+      8.730497225339067e-10,
+      7.566721325097116e-09,
+      3.621332747452064e-10,
+      9.822845544376224e-10,
+      8.549362868300198e-09,
+      4.0305626291782785e-10,
+      2.1093328106628717e-10,
+      2.163254165147224e-09,
+      4.3026606207162374e-11
+    ],
+    [
+      2.2654085715925042e-09,
+      2.265408571592504e-09,
+      2.731474401629097e-07,
+      3.621332747452065e-10,
+      3.621332747452061e-10,
+      6.9735136191299e-08,
+      4.030562629178277e-10,
+      4.030562629178274e-10,
+      7.88800655629222e-08,
+      4.302660620716233e-11,
+      4.302660620716227e-11,
+      2.083931710949802e-08
+    ],
+    [
+      7.56672132509712e-09,
+      8.730497225339066e-10,
+      3.6213327474520664e-10,
+      2.6477831472111832e-08,
+      3.5281002633236772e-09,
+      1.9872248912270817e-09,
+      7.566721325097123e-09,
+      8.730497225339069e-10,
+      3.6213327474520684e-10,
+      7.566721325097123e-09,
+      8.730497225339072e-10,
+      3.6213327474520664e-10
+    ],
+    [
+      8.73049722533907e-10,
+      7.566721325097116e-09,
+      3.6213327474520664e-10,
+      3.528100263323678e-09,
+      2.6477831472111825e-08,
+      1.9872248912270817e-09,
+      8.730497225339072e-10,
+      7.56672132509712e-09,
+      3.6213327474520653e-10,
+      8.730497225339072e-10,
+      7.56672132509712e-09,
+      3.621332747452065e-10
+    ],
+    [
+      3.6213327474520664e-10,
+      3.6213327474520633e-10,
+      6.973513619129902e-08,
+      1.9872248912270817e-09,
+      1.9872248912270812e-09,
+      2.3339655045273185e-07,
+      3.6213327474520653e-10,
+      3.6213327474520607e-10,
+      6.973513619129902e-08,
+      3.621332747452064e-10,
+      3.621332747452062e-10,
+      6.973513619129899e-08
+    ],
+    [
+      8.549362868300198e-09,
+      9.822845544376218e-10,
+      4.03056262917828e-10,
+      7.56672132509712e-09,
+      8.730497225339066e-10,
+      3.621332747452063e-10,
+      3.089865708885865e-08,
+      4.080981872887582e-09,
+      2.265408571592505e-09,
+      2.1632541651472247e-09,
+      2.1093328106628712e-10,
+      4.3026606207162374e-11
+    ],
+    [
+      9.82284554437622e-10,
+      8.549362868300198e-09,
+      4.030562629178278e-10,
+      8.730497225339069e-10,
+      7.566721325097116e-09,
+      3.6213327474520607e-10,
+      4.080981872887583e-09,
+      3.0898657088858644e-08,
+      2.265408571592504e-09,
+      2.1093328106628722e-10,
+      2.163254165147223e-09,
+      4.302660620716233e-11
+    ],
+    [
+      4.0305626291782795e-10,
+      4.030562629178278e-10,
+      7.888006556292219e-08,
+      3.621332747452064e-10,
+      3.621332747452062e-10,
+      6.973513619129899e-08,
+      2.265408571592504e-09,
+      2.2654085715925034e-09,
+      2.731474401629097e-07,
+      4.302660620716236e-11,
+      4.3026606207162296e-11,
+      2.0839317109498018e-08
+    ],
+    [
+      2.1632541651472247e-09,
+      2.1093328106628717e-10,
+      4.302660620716243e-11,
+      7.56672132509712e-09,
+      8.730497225339072e-10,
+      3.621332747452065e-10,
+      2.163254165147225e-09,
+      2.1093328106628725e-10,
+      4.3026606207162445e-11,
+      3.728476579201164e-08,
+      4.852333146258918e-09,
+      2.6254382283031694e-09
+    ],
+    [
+      2.1093328106628725e-10,
+      2.1632541651472235e-09,
+      4.302660620716234e-11,
+      8.730497225339072e-10,
+      7.566721325097118e-09,
+      3.621332747452061e-10,
+      2.109332810662874e-10,
+      2.163254165147224e-09,
+      4.302660620716233e-11,
+      4.852333146258919e-09,
+      3.728476579201162e-08,
+      2.625438228303169e-09
+    ],
+    [
+      4.3026606207162484e-11,
+      4.302660620716236e-11,
+      2.0839317109498024e-08,
+      3.6213327474520643e-10,
+      3.621332747452062e-10,
+      6.973513619129898e-08,
+      4.302660620716246e-11,
+      4.302660620716234e-11,
+      2.0839317109498018e-08,
+      2.6254382283031694e-09,
+      2.625438228303169e-09,
+      3.311881886163337e-07
+    ]
+  ],
+  "point_covariances": {
+    "GPS4": [
+      [
+        3.728476579201164e-08,
+        4.852333146258918e-09,
+        2.6254382283031694e-09
+      ],
+      [
+        4.852333146258919e-09,
+        3.728476579201162e-08,
+        2.625438228303169e-09
+      ],
+      [
+        2.6254382283031694e-09,
+        2.625438228303169e-09,
+        3.311881886163337e-07
+      ]
+    ],
+    "GPS1": [
+      [
+        3.089865708885865e-08,
+        4.080981872887581e-09,
+        2.265408571592504e-09
+      ],
+      [
+        4.080981872887581e-09,
+        3.0898657088858644e-08,
+        2.265408571592504e-09
+      ],
+      [
+        2.2654085715925042e-09,
+        2.265408571592504e-09,
+        2.731474401629097e-07
+      ]
+    ],
+    "GPS2": [
+      [
+        2.6477831472111832e-08,
+        3.5281002633236772e-09,
+        1.9872248912270817e-09
+      ],
+      [
+        3.528100263323678e-09,
+        2.6477831472111825e-08,
+        1.9872248912270817e-09
+      ],
+      [
+        1.9872248912270817e-09,
+        1.9872248912270812e-09,
+        2.3339655045273185e-07
+      ]
+    ],
+    "GPS3": [
+      [
+        3.089865708885865e-08,
+        4.080981872887582e-09,
+        2.265408571592505e-09
+      ],
+      [
+        4.080981872887583e-09,
+        3.0898657088858644e-08,
+        2.265408571592504e-09
+      ],
+      [
+        2.265408571592504e-09,
+        2.2654085715925034e-09,
+        2.731474401629097e-07
+      ]
+    ]
+  }
+}

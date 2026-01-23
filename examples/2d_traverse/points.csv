@@ -1,0 +1,6 @@
+point_id,easting,northing,height,fixed_e,fixed_n,fixed_h
+CP1,1000.000,2000.000,100.000,true,true,false
+CP2,1500.000,2000.000,102.500,true,true,false
+T1,1100.000,2150.000,101.200,false,false,false
+T2,1250.000,2250.000,103.500,false,false,false
+T3,1400.000,2150.000,102.800,false,false,false

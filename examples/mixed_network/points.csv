@@ -1,0 +1,7 @@
+point_id,easting,northing,height,fixed_e,fixed_n,fixed_h
+CORS,10000.000,20000.000,500.000,true,true,true
+BM01,10200.000,20000.000,502.500,true,true,true
+TS01,10100.000,20100.000,501.800,false,false,false
+TS02,10150.000,20200.000,503.200,false,false,false
+TS03,10250.000,20150.000,502.100,false,false,false
+TS04,10300.000,20250.000,504.500,false,false,false

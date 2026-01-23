@@ -1,0 +1,749 @@
+{
+  "metadata": {
+    "plugin_version": "1.0.1",
+    "timestamp": "2026-01-22T22:09:15.371066Z",
+    "network_name": "Unnamed Network",
+    "settings_snapshot": {
+      "angle_unit": "degrees",
+      "sigma_angle_unit": "radians",
+      "sigma_leveling_unit": "m",
+      "max_iterations": 50,
+      "convergence_tol": 1e-06,
+      "confidence_level": 0.95,
+      "outlier_threshold": 3.0,
+      "robust_method": "none",
+      "huber_c": 1.5,
+      "danish_c": 2.0,
+      "igg3_k0": 1.5,
+      "igg3_k1": 3.0,
+      "auto_datum_default": false,
+      "ellipse_vertices": 64,
+      "residual_vector_scale": 1000.0,
+      "compute_reliability": true
+    }
+  },
+  "input_summary": {
+    "num_points": 5,
+    "num_fixed_points": 2,
+    "num_observations": 23,
+    "observations_by_type": {
+      "distance": 8,
+      "direction": 10,
+      "angle": 5
+    }
+  },
+  "adjustment": {
+    "success": true,
+    "iterations": 2,
+    "converged": true,
+    "degrees_of_freedom": 13,
+    "variance_factor": 0.19259616314412537,
+    "a_posteriori_sigma0": 0.4388577937602628,
+    "error_message": null,
+    "messages": [],
+    "robust_method": null,
+    "robust_iterations": 0,
+    "robust_converged": true,
+    "robust_message": null
+  },
+  "global_test": {
+    "test_name": "chi_square",
+    "test_statistic": 2.50375012087363,
+    "critical_lower": 5.008750511810331,
+    "critical_upper": 24.73560488493155,
+    "confidence_level": 0.95,
+    "passed": false,
+    "p_value": 0.001573228337274723,
+    "degrees_of_freedom": 13
+  },
+  "datum_summary": {
+    "is_solvable": true,
+    "horizontal": {
+      "status": "ok",
+      "message": "Fixed E: ['CP1', 'CP2'], Fixed N: ['CP1', 'CP2']",
+      "fixed_easting_points": [
+        "CP1",
+        "CP2"
+      ],
+      "fixed_northing_points": [
+        "CP1",
+        "CP2"
+      ]
+    },
+    "orientation": {
+      "status": "ok",
+      "message": "4 direction set(s), rotation constrained",
+      "direction_sets": [
+        "SET1",
+        "SET2",
+        "SET3",
+        "SET4"
+      ]
+    },
+    "height": {
+      "status": "ok",
+      "message": "Not required for 2D adjustment",
+      "fixed_height_points": [],
+      "required": false
+    },
+    "connectivity": {
+      "status": "ok",
+      "message": "All points connected",
+      "disconnected_points": []
+    },
+    "degrees_of_freedom": {
+      "value": 13,
+      "status": "ok",
+      "message": "Redundant: DOF = 13",
+      "num_observations": 23,
+      "num_unknowns": 10
+    },
+    "errors": [],
+    "warnings": [],
+    "applied_constraints": []
+  },
+  "applied_auto_constraints": null,
+  "adjusted_points": [
+    {
+      "id": "CP1",
+      "name": "CP1",
+      "easting": 1000.0,
+      "northing": 2000.0,
+      "height": null,
+      "fixed_easting": true,
+      "fixed_northing": true,
+      "fixed_height": false,
+      "sigma_easting": 0.0,
+      "sigma_northing": 0.0,
+      "sigma_height": null
+    },
+    {
+      "id": "CP2",
+      "name": "CP2",
+      "easting": 1500.0,
+      "northing": 2000.0,
+      "height": null,
+      "fixed_easting": true,
+      "fixed_northing": true,
+      "fixed_height": false,
+      "sigma_easting": 0.0,
+      "sigma_northing": 0.0,
+      "sigma_height": null
+    },
+    {
+      "id": "T1",
+      "name": "T1",
+      "easting": 1100.0028180964596,
+      "northing": 2150.002579171865,
+      "height": null,
+      "fixed_easting": false,
+      "fixed_northing": false,
+      "fixed_height": false,
+      "sigma_easting": 0.0014398475461349979,
+      "sigma_northing": 0.0014058930258674352,
+      "sigma_height": null
+    },
+    {
+      "id": "T2",
+      "name": "T2",
+      "easting": 1250.002006162632,
+      "northing": 2250.0013527460187,
+      "height": null,
+      "fixed_easting": false,
+      "fixed_northing": false,
+      "fixed_height": false,
+      "sigma_easting": 0.001833019622842002,
+      "sigma_northing": 0.0013002797392706838,
+      "sigma_height": null
+    },
+    {
+      "id": "T3",
+      "name": "T3",
+      "easting": 1400.0037187644857,
+      "northing": 2150.000063162494,
+      "height": null,
+      "fixed_easting": false,
+      "fixed_northing": false,
+      "fixed_height": false,
+      "sigma_easting": 0.0014901582749689403,
+      "sigma_northing": 0.0013402764341146002,
+      "sigma_height": null
+    }
+  ],
+  "error_ellipses": [
+    {
+      "point_id": "T1",
+      "semi_major_m": 0.004265211077603397,
+      "semi_minor_m": 0.0024640587270765746,
+      "orientation_rad": 3.950882282419127,
+      "orientation_deg": 226.36888013562975,
+      "confidence_level": 0.95
+    },
+    {
+      "point_id": "T2",
+      "semi_major_m": 0.00452746927245994,
+      "semi_minor_m": 0.003124586709156768,
+      "orientation_rad": 4.526448332705138,
+      "orientation_deg": 259.3463856480327,
+      "confidence_level": 0.95
+    },
+    {
+      "point_id": "T3",
+      "semi_major_m": 0.004099646772823698,
+      "semi_minor_m": 0.002694454637877395,
+      "orientation_rad": 5.363043952773404,
+      "orientation_deg": 307.2797838370745,
+      "confidence_level": 0.95
+    }
+  ],
+  "residuals": [
+    {
+      "obs_id": "D001",
+      "obs_type": "distance",
+      "observed": 180.281,
+      "computed": 180.2812729748855,
+      "residual": -0.0002729748854903846,
+      "standardized_residual": -0.08746346691434184,
+      "redundancy_number": 0.3896296515480919,
+      "mdb": 0.012013513956241638,
+      "external_reliability": 0.005501627099590384,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "CP1",
+      "to_point": "T1"
+    },
+    {
+      "obs_id": "D002",
+      "obs_type": "distance",
+      "observed": 180.275,
+      "computed": 180.27620790566297,
+      "residual": -0.0012079056629659135,
+      "standardized_residual": -0.3310481443717087,
+      "redundancy_number": 0.5325295482491301,
+      "mdb": 0.010276002520997923,
+      "external_reliability": 0.002402728354445462,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "T1",
+      "to_point": "T2"
+    },
+    {
+      "obs_id": "D003",
+      "obs_type": "distance",
+      "observed": 180.283,
+      "computed": 180.27970407635223,
+      "residual": 0.0032959236477552167,
+      "standardized_residual": 0.8730076336883897,
+      "redundancy_number": 0.5701356445336314,
+      "mdb": 0.00993131965245597,
+      "external_reliability": 0.0019479460515426862,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "T2",
+      "to_point": "T3"
+    },
+    {
+      "obs_id": "D004",
+      "obs_type": "distance",
+      "observed": 180.279,
+      "computed": 180.2755535553399,
+      "residual": 0.003446444660085035,
+      "standardized_residual": 1.0245913360858705,
+      "redundancy_number": 0.45258614181659274,
+      "mdb": 0.011146677379131581,
+      "external_reliability": 0.004446354313711785,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "T3",
+      "to_point": "CP2"
+    },
+    {
+      "obs_id": "D005",
+      "obs_type": "distance",
+      "observed": 353.558,
+      "computed": 353.5557657006599,
+      "residual": 0.0022342993401025524,
+      "standardized_residual": 0.4852854274252019,
+      "redundancy_number": 0.5888242850905896,
+      "mdb": 0.011726933073461199,
+      "external_reliability": 0.004407725278367637,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "CP1",
+      "to_point": "T2"
+    },
+    {
+      "obs_id": "D006",
+      "obs_type": "distance",
+      "observed": 300.003,
+      "computed": 300.0009006785766,
+      "residual": 0.0020993214233726576,
+      "standardized_residual": 0.5335697660798062,
+      "redundancy_number": 0.6192064062257879,
+      "mdb": 0.009529680423195278,
+      "external_reliability": 0.001960320948261957,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "T1",
+      "to_point": "T3"
+    },
+    {
+      "obs_id": "D007",
+      "obs_type": "distance",
+      "observed": 353.549,
+      "computed": 353.5529285659334,
+      "residual": -0.00392856593344959,
+      "standardized_residual": -0.7924276481207175,
+      "redundancy_number": 0.6827258585086173,
+      "mdb": 0.01089065817899559,
+      "external_reliability": 0.0033702603968606836,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "T2",
+      "to_point": "CP2"
+    },
+    {
+      "obs_id": "D008",
+      "obs_type": "distance",
+      "observed": 500.002,
+      "computed": 500.0,
+      "residual": 0.0020000000000095497,
+      "standardized_residual": 0.28571428571564994,
+      "redundancy_number": 1.0,
+      "mdb": 0.010498423621042731,
+      "external_reliability": 0.0,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "CP1",
+      "to_point": "CP2"
+    },
+    {
+      "obs_id": "DIR001",
+      "obs_type": "direction",
+      "observed": 0.5880101516431496,
+      "computed": 0.5880103914644732,
+      "residual": -2.398213236887159e-07,
+      "standardized_residual": -0.01306353685810653,
+      "redundancy_number": 0.5851019670151261,
+      "mdb": 4.7056705196805246e-05,
+      "external_reliability": 0.001354603649493668,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "CP1",
+      "to_point": "T1"
+    },
+    {
+      "obs_id": "DIR002",
+      "obs_type": "direction",
+      "observed": 0.7854033993852043,
+      "computed": 0.7854021875575146,
+      "residual": 1.2118276897510327e-06,
+      "standardized_residual": 0.06336806844976421,
+      "redundancy_number": 0.6349189965540868,
+      "mdb": 4.517291683596792e-05,
+      "external_reliability": 0.0008782931838264356,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "CP1",
+      "to_point": "T2"
+    },
+    {
+      "obs_id": "DIR003",
+      "obs_type": "direction",
+      "observed": 1.5707980721241486,
+      "computed": 1.5707990441305153,
+      "residual": -9.720063669504952e-07,
+      "standardized_residual": -0.05325690733632377,
+      "redundancy_number": 0.5783141915951143,
+      "mdb": 4.7332056007772605e-05,
+      "external_reliability": 0.0016690702362213241,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "CP1",
+      "to_point": "CP2"
+    },
+    {
+      "obs_id": "DIR004",
+      "obs_type": "direction",
+      "observed": 0.982786175151747,
+      "computed": 0.9827893456203537,
+      "residual": -3.1704686067612897e-06,
+      "standardized_residual": -0.17458608970606407,
+      "redundancy_number": 0.5725391055081062,
+      "mdb": 4.757017149362679e-05,
+      "external_reliability": 0.0010446722027345422,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "T1",
+      "to_point": "T2"
+    },
+    {
+      "obs_id": "DIR005",
+      "obs_type": "direction",
+      "observed": 1.5707928361363925,
+      "computed": 1.5707971736478117,
+      "residual": -4.33751141937222e-06,
+      "standardized_residual": -0.23128738372287072,
+      "redundancy_number": 0.6105973173756555,
+      "mdb": 4.606380920530672e-05,
+      "external_reliability": 0.0009445023819265807,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "T1",
+      "to_point": "T3"
+    },
+    {
+      "obs_id": "DIR006",
+      "obs_type": "direction",
+      "observed": 1.9295749344811108,
+      "computed": 1.9295674265010843,
+      "residual": 7.507980026577599e-06,
+      "standardized_residual": 0.40085968719671045,
+      "redundancy_number": 0.6090303945734106,
+      "mdb": 4.612302797979175e-05,
+      "external_reliability": 0.0010914195678585913,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "T1",
+      "to_point": "CP2"
+    },
+    {
+      "obs_id": "DIR007",
+      "obs_type": "direction",
+      "observed": 2.15879251580403,
+      "computed": 2.158794450675306,
+      "residual": -1.9348712756439568e-06,
+      "standardized_residual": -0.11865963935132992,
+      "redundancy_number": 0.4616104406803708,
+      "mdb": 5.2978478690807946e-05,
+      "external_reliability": 0.0008234271505174344,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "T2",
+      "to_point": "T3"
+    },
+    {
+      "obs_id": "DIR008",
+      "obs_type": "direction",
+      "observed": 2.356197980850849,
+      "computed": 2.356196045979573,
+      "residual": 1.9348712756439568e-06,
+      "standardized_residual": 0.11865963935132989,
+      "redundancy_number": 0.4616104406803709,
+      "mdb": 5.297847869080793e-05,
+      "external_reliability": 0.0008234271505174367,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "T2",
+      "to_point": "CP2"
+    },
+    {
+      "obs_id": "DIR009",
+      "obs_type": "direction",
+      "observed": 2.5535947192514077,
+      "computed": 2.5536012336676275,
+      "residual": -6.514416219793873e-06,
+      "standardized_residual": -0.4378496864153101,
+      "redundancy_number": 0.38430712542506523,
+      "mdb": 5.806281350461465e-05,
+      "external_reliability": 0.001464483155862539,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "T3",
+      "to_point": "CP2"
+    },
+    {
+      "obs_id": "DIR010",
+      "obs_type": "direction",
+      "observed": 4.7123977070309495,
+      "computed": 4.71239119261473,
+      "residual": 6.514416219793873e-06,
+      "standardized_residual": 0.4378496864153102,
+      "redundancy_number": 0.38430712542506507,
+      "mdb": 5.8062813504614665e-05,
+      "external_reliability": 0.0014644831558625478,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "T3",
+      "to_point": "T1"
+    },
+    {
+      "obs_id": "ANG001",
+      "obs_type": "angle",
+      "observed": 3.5363826397324063,
+      "computed": 3.536381864901102,
+      "residual": 7.748313044508848e-07,
+      "standardized_residual": 0.043871645583152145,
+      "redundancy_number": 0.5415318248768695,
+      "mdb": 4.891311285801199e-05,
+      "external_reliability": 0.0018414300512497417,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "CP1",
+      "to_point": "T2",
+      "at_point": "T1"
+    },
+    {
+      "obs_id": "ANG002",
+      "obs_type": "angle",
+      "observed": 4.317586776937312,
+      "computed": 4.317595380863788,
+      "residual": -8.603926476169477e-06,
+      "standardized_residual": -0.4601610370358354,
+      "redundancy_number": 0.606947618068641,
+      "mdb": 4.6202097148994343e-05,
+      "external_reliability": 0.0019391747624004,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "T1",
+      "to_point": "T3",
+      "at_point": "T2"
+    },
+    {
+      "obs_id": "ANG003",
+      "obs_type": "angle",
+      "observed": 3.536391366378666,
+      "computed": 3.536400448985947,
+      "residual": -9.082607280941346e-06,
+      "standardized_residual": -0.5854925983374263,
+      "redundancy_number": 0.41778781636839557,
+      "mdb": 5.568771642798728e-05,
+      "external_reliability": 0.0024147380120551677,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "T2",
+      "to_point": "CP2",
+      "at_point": "T3"
+    },
+    {
+      "obs_id": "ANG004",
+      "obs_type": "angle",
+      "observed": 4.124382319400044,
+      "computed": 4.12438969292856,
+      "residual": -7.373528515763894e-06,
+      "standardized_residual": -0.3979817688734218,
+      "redundancy_number": 0.5959391112688266,
+      "mdb": 4.662687938020194e-05,
+      "external_reliability": 0.0023675229844667077,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "CP1",
+      "to_point": "T3",
+      "at_point": "T1"
+    },
+    {
+      "obs_id": "ANG005",
+      "obs_type": "angle",
+      "observed": 4.515000968630391,
+      "computed": 4.514996976168056,
+      "residual": 3.992462334956315e-06,
+      "standardized_residual": 0.19607306441413808,
+      "redundancy_number": 0.719818988612455,
+      "mdb": 4.2425370642452725e-05,
+      "external_reliability": 0.0020855649100020063,
+      "is_outlier_candidate": false,
+      "flagged": false,
+      "weight_factor": null,
+      "from_point": "T1",
+      "to_point": "CP2",
+      "at_point": "T2"
+    }
+  ],
+  "flagged_observations": [],
+  "covariance_matrix": [
+    [
+      2.0731609561109746e-06,
+      1.0103210924032704e-06,
+      1.7258927801196624e-06,
+      5.649616717989037e-08,
+      1.2301234911980887e-06,
+      -3.345082605882819e-07,
+      -3.2661107137598586e-09,
+      -3.9116604185188276e-09,
+      -3.4474229870746443e-09,
+      -4.56557789989964e-09
+    ],
+    [
+      1.0103210924032696e-06,
+      1.976535200182693e-06,
+      7.470372922379433e-07,
+      1.203513379185884e-06,
+      5.154332940823361e-07,
+      7.122791561215062e-07,
+      7.772034374701157e-10,
+      -4.04482253586079e-09,
+      -3.44046359536981e-09,
+      -4.392380247141708e-09
+    ],
+    [
+      1.725892780119661e-06,
+      7.470372922379423e-07,
+      3.3599609377238346e-06,
+      3.255247920705077e-07,
+      1.789495741460095e-06,
+      -3.276235767946192e-07,
+      -3.911914528154513e-09,
+      -4.5371630220668645e-09,
+      -7.608831907976996e-09,
+      -5.4167658069652326e-09
+    ],
+    [
+      5.649616717988852e-08,
+      1.2035133791858836e-06,
+      3.2552479207050547e-07,
+      1.6907274003578378e-06,
+      1.8583202826708938e-07,
+      1.0828843909021142e-06,
+      2.05757230474148e-09,
+      -5.551498266908816e-10,
+      -3.6338526147583797e-09,
+      -2.295849974120347e-09
+    ],
+    [
+      1.2301234911980874e-06,
+      5.154332940823356e-07,
+      1.7894957414600944e-06,
+      1.858320282670916e-07,
+      2.220571684458408e-06,
+      -7.679628748163176e-07,
+      -2.4329099069950433e-09,
+      -3.220384043687222e-09,
+      -3.513192588821118e-09,
+      -6.0820222269432304e-09
+    ],
+    [
+      -3.345082605882814e-07,
+      7.122791561215068e-07,
+      -3.2762357679461883e-07,
+      1.0828843909021138e-06,
+      -7.679628748163178e-07,
+      1.7963409198429485e-06,
+      2.185482001458285e-09,
+      1.3388728356647133e-09,
+      2.1372779793272073e-10,
+      8.154601376112479e-10
+    ],
+    [
+      -3.2661107137598536e-09,
+      7.772034374701169e-10,
+      -3.911914528154512e-09,
+      2.0575723047414752e-09,
+      -2.4329099069950462e-09,
+      2.1854820014582855e-09,
+      4.6779879600639224e-11,
+      4.52396600755655e-12,
+      4.424924373312838e-12,
+      4.599440643529139e-12
+    ],
+    [
+      -3.9116604185188276e-09,
+      -4.044822535860796e-09,
+      -4.53716302206687e-09,
+      -5.551498266908937e-10,
+      -3.220384043687228e-09,
+      1.3388728356647119e-09,
+      4.5239660075565415e-12,
+      5.299749695995773e-11,
+      1.1488905738783302e-11,
+      1.4344858997570903e-11
+    ],
+    [
+      -3.4474229870746327e-09,
+      -3.4404635953698042e-09,
+      -7.608831907976976e-09,
+      -3.6338526147583818e-09,
+      -3.5131925888211015e-09,
+      2.137277979327176e-10,
+      4.424924373312816e-12,
+      1.1488905738783239e-11,
+      8.1890258384001e-11,
+      1.3869044417754663e-11
+    ],
+    [
+      -4.5655778998996535e-09,
+      -4.392380247141712e-09,
+      -5.416765806965242e-09,
+      -2.2958499741203522e-09,
+      -6.082022226943241e-09,
+      8.154601376112571e-10,
+      4.599440643529161e-12,
+      1.4344858997570904e-11,
+      1.3869044417754747e-11,
+      7.692860115607515e-11
+    ]
+  ],
+  "point_covariances": {
+    "CP1": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "CP2": [
+      [
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0
+      ]
+    ],
+    "T1": [
+      [
+        2.0731609561109746e-06,
+        1.0103210924032704e-06
+      ],
+      [
+        1.0103210924032696e-06,
+        1.976535200182693e-06
+      ]
+    ],
+    "T2": [
+      [
+        3.3599609377238346e-06,
+        3.255247920705077e-07
+      ],
+      [
+        3.2552479207050547e-07,
+        1.6907274003578378e-06
+      ]
+    ],
+    "T3": [
+      [
+        2.220571684458408e-06,
+        -7.679628748163176e-07
+      ],
+      [
+        -7.679628748163178e-07,
+        1.7963409198429485e-06
+      ]
+    ]
+  }
+}

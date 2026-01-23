@@ -1,0 +1,83 @@
+<!doctype html>
+<html><head><meta charset='utf-8'>
+<title>Mixed Adjustment Report (Classical + GNSS + Leveling)</title>
+<style>
+    body { font-family: Arial, sans-serif; margin: 24px; }
+    h1 { margin-bottom: 4px; }
+    .meta { color: #555; margin-bottom: 16px; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0 24px 0; }
+    th, td { border: 1px solid #ddd; padding: 6px 8px; font-size: 13px; }
+    th { background: #f5f5f5; text-align: left; }
+    .ok { color: #067d00; font-weight: bold; }
+    .bad { color: #b00020; font-weight: bold; }
+    .flag { background: #fff3cd; }
+    .small { font-size: 12px; color: #666; }
+    </style>
+</head><body>
+<h1>Mixed Adjustment Report (Classical + GNSS + Leveling)</h1>
+<div class='meta'>Success: <span class='ok'>True</span> | Converged: <span class='ok'>True</span> | Iterations: 3 | DOF: 25 | σ₀²: 0.15515771164609637</div>
+<h2>Constraint Health Summary</h2>
+<table><thead><tr><th>Category</th><th>Status</th><th>Details</th></tr></thead><tbody>
+<tr><td>Horizontal Datum</td><td class='ok'>OK</td><td>Fixed E: [&#x27;BM01&#x27;, &#x27;CORS&#x27;], Fixed N: [&#x27;BM01&#x27;, &#x27;CORS&#x27;]</td></tr>
+<tr><td>Orientation</td><td class='ok'>OK</td><td>Constrained by multiple fixed points</td></tr>
+<tr><td>Height Datum</td><td class='ok'>OK</td><td>Fixed heights: [&#x27;BM01&#x27;, &#x27;CORS&#x27;]</td></tr>
+<tr><td>Connectivity</td><td class='ok'>OK</td><td>All points connected</td></tr>
+<tr><td>Degrees of Freedom</td><td class='ok'>OK (25)</td><td>Redundant: DOF = 25 (41 obs, 16 unknowns)</td></tr>
+</tbody></table>
+<h2>Chi-square Global Test</h2>
+<table><thead><tr><th>Statistic</th><th>Lower</th><th>Upper</th><th>p-value</th><th>DOF</th><th>Passed</th></tr></thead><tbody>
+<tr><td>3.8789427911524097</td><td>13.11972002493779</td><td>40.64646912027518</td><td>7.730138687228698e-07</td><td>25</td><td class='bad'>False</td></tr>
+</tbody></table>
+<h2>Adjusted Points</h2>
+<table><thead><tr><th>ID</th><th>Name</th><th>E</th><th>N</th><th>H</th><th>σE</th><th>σN</th><th>σH</th></tr></thead><tbody>
+<tr><td>BM01</td><td>BM01</td><td>10200.0000</td><td>20000.0000</td><td>502.5000</td><td>0.0000</td><td>0.0000</td><td>0.0000</td></tr>
+<tr><td>CORS</td><td>CORS</td><td>10000.0000</td><td>20000.0000</td><td>500.0000</td><td>0.0000</td><td>0.0000</td><td>0.0000</td></tr>
+<tr><td>TS01</td><td>TS01</td><td>10100.0001</td><td>20099.9986</td><td>501.8005</td><td>0.0010</td><td>0.0010</td><td>0.0004</td></tr>
+<tr><td>TS02</td><td>TS02</td><td>10150.0009</td><td>20200.0013</td><td>503.2008</td><td>0.0010</td><td>0.0011</td><td>0.0006</td></tr>
+<tr><td>TS03</td><td>TS03</td><td>10249.9987</td><td>20150.0002</td><td>502.1002</td><td>0.0010</td><td>0.0009</td><td>0.0005</td></tr>
+<tr><td>TS04</td><td>TS04</td><td>10300.0018</td><td>20249.9998</td><td>504.5007</td><td>0.0010</td><td>0.0010</td><td>0.0006</td></tr>
+</tbody></table>
+<h2>Error Ellipses</h2>
+<table><thead><tr><th>Point</th><th>a (m)</th><th>b (m)</th><th>θ (deg)</th><th>Confidence</th></tr></thead><tbody>
+<tr><td>TS01</td><td>0.0025</td><td>0.0024</td><td>339.57</td><td>0.950</td></tr>
+<tr><td>TS02</td><td>0.0028</td><td>0.0023</td><td>23.72</td><td>0.950</td></tr>
+<tr><td>TS03</td><td>0.0025</td><td>0.0022</td><td>266.10</td><td>0.950</td></tr>
+<tr><td>TS04</td><td>0.0026</td><td>0.0024</td><td>307.82</td><td>0.950</td></tr>
+</tbody></table>
+<h2>Residuals</h2>
+<table><thead><tr><th>ID</th><th>Type</th><th>From</th><th>To</th><th>Obs/Length</th><th>v/|v| (mm)</th><th>w</th><th>r</th><th>Flag</th></tr></thead><tbody>
+<tr class=''><td>D001</td><td>distance</td><td>TS01</td><td>TS02</td><td>111.8050</td><td>-1.16</td><td>-1.094</td><td>0.453</td><td></td></tr>
+<tr class=''><td>D002</td><td>distance</td><td>TS02</td><td>TS03</td><td>111.8020</td><td>0.12</td><td>0.101</td><td>0.596</td><td></td></tr>
+<tr class='flag'><td>D003</td><td>distance</td><td>TS03</td><td>TS04</td><td>111.8080</td><td>3.62</td><td>2.904</td><td>0.624</td><td>⚑</td></tr>
+<tr class=''><td>D004</td><td>distance</td><td>TS01</td><td>TS03</td><td>158.1150</td><td>1.92</td><td>1.145</td><td>0.726</td><td></td></tr>
+<tr class='flag'><td>D005</td><td>distance</td><td>TS02</td><td>TS04</td><td>158.1090</td><td>-5.25</td><td>-3.271</td><td>0.665</td><td>⚑</td></tr>
+<tr class=''><td>D006</td><td>distance</td><td>BM01</td><td>TS03</td><td>158.1120</td><td>-1.70</td><td>-0.971</td><td>0.786</td><td></td></tr>
+<tr class=''><td>D007</td><td>distance</td><td>TS01</td><td>TS04</td><td>250.0030</td><td>0.92</td><td>0.443</td><td>0.768</td><td></td></tr>
+<tr class=''><td>D008</td><td>distance</td><td>BM01</td><td>TS01</td><td>141.4200</td><td>-0.32</td><td>-0.265</td><td>0.589</td><td></td></tr>
+<tr class=''><td>DIR001</td><td>direction</td><td>TS01</td><td>TS02</td><td>0.4637</td><td>0.62</td><td>0.531</td><td>0.357</td><td></td></tr>
+<tr class=''><td>DIR002</td><td>direction</td><td>TS01</td><td>TS03</td><td>1.2490</td><td>-0.14</td><td>-0.108</td><td>0.464</td><td></td></tr>
+<tr class=''><td>DIR003</td><td>direction</td><td>TS01</td><td>TS04</td><td>0.9273</td><td>-0.48</td><td>-0.347</td><td>0.493</td><td></td></tr>
+<tr class=''><td>DIR004</td><td>direction</td><td>TS02</td><td>TS03</td><td>2.0344</td><td>-1.75</td><td>-1.621</td><td>0.305</td><td></td></tr>
+<tr class=''><td>DIR005</td><td>direction</td><td>TS02</td><td>TS04</td><td>1.2491</td><td>1.75</td><td>1.621</td><td>0.305</td><td></td></tr>
+<tr class=''><td>DIR006</td><td>direction</td><td>TS03</td><td>TS04</td><td>0.4636</td><td>0.00</td><td>0.005</td><td>0.000</td><td></td></tr>
+<tr class=''><td>DIR007</td><td>direction</td><td>BM01</td><td>TS03</td><td>0.3218</td><td>0.28</td><td>0.245</td><td>0.341</td><td></td></tr>
+<tr class=''><td>DIR008</td><td>direction</td><td>BM01</td><td>TS01</td><td>5.4978</td><td>-0.28</td><td>-0.245</td><td>0.341</td><td></td></tr>
+<tr class=''><td>BL001</td><td>gnss_baseline</td><td>CORS</td><td>TS01</td><td>141.433</td><td>2.49</td><td>1.150</td><td>0.739</td><td></td></tr>
+<tr class=''><td>BL002</td><td>gnss_baseline</td><td>CORS</td><td>TS02</td><td>250.021</td><td>3.24</td><td>1.375</td><td>0.709</td><td></td></tr>
+<tr class=''><td>BL003</td><td>gnss_baseline</td><td>CORS</td><td>TS04</td><td>390.539</td><td>4.28</td><td>1.580</td><td>0.785</td><td></td></tr>
+<tr class=''><td>BL004</td><td>gnss_baseline</td><td>BM01</td><td>TS03</td><td>158.116</td><td>2.34</td><td>1.506</td><td>0.755</td><td></td></tr>
+<tr class=''><td>BL005</td><td>gnss_baseline</td><td>BM01</td><td>TS04</td><td>269.267</td><td>2.32</td><td>0.701</td><td>0.785</td><td></td></tr>
+<tr class=''><td>BL006</td><td>gnss_baseline</td><td>CORS</td><td>BM01</td><td>200.016</td><td>1.71</td><td>0.586</td><td>1.000</td><td></td></tr>
+<tr class=''><td>HD001</td><td>height_diff</td><td>BM01</td><td>TS03</td><td>-0.3998</td><td>-0.03</td><td>-0.079</td><td>0.399</td><td></td></tr>
+<tr class=''><td>HD002</td><td>height_diff</td><td>TS03</td><td>TS04</td><td>2.4005</td><td>0.01</td><td>0.041</td><td>0.251</td><td></td></tr>
+<tr class=''><td>HD003</td><td>height_diff</td><td>TS01</td><td>TS02</td><td>1.4002</td><td>-0.13</td><td>-0.441</td><td>0.249</td><td></td></tr>
+<tr class=''><td>HD004</td><td>height_diff</td><td>TS02</td><td>TS04</td><td>1.2998</td><td>-0.12</td><td>-0.297</td><td>0.350</td><td></td></tr>
+<tr class=''><td>HD005</td><td>height_diff</td><td>CORS</td><td>TS01</td><td>1.8003</td><td>-0.16</td><td>-0.371</td><td>0.552</td><td></td></tr>
+<tr class=''><td>HD006</td><td>height_diff</td><td>TS01</td><td>TS03</td><td>0.2998</td><td>0.03</td><td>0.062</td><td>0.573</td><td></td></tr>
+<tr class=''><td>HD007</td><td>height_diff</td><td>BM01</td><td>TS01</td><td>-0.6995</td><td>0.04</td><td>0.063</td><td>0.689</td><td></td></tr>
+</tbody></table>
+<h2>Messages</h2><ul>
+<li>Mixed adjustment: 16 classical + 6 GNSS baselines + 7 leveling</li>
+</ul>
+<div class='small'>Generated by Survey Adjustment core engine</div>
+</body></html>
