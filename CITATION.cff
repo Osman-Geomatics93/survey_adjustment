@@ -35,14 +35,14 @@ keywords:
   - robust estimation
 license: GPL-2.0-or-later
 version: "1.0.2"
-date-released: "2024-12-01"
+date-released: "2026-01-01"
 preferred-citation:
   type: software
   authors:
     - given-names: Osman
       family-names: Ibrahim
   title: "Survey Adjustment & Network Analysis: A QGIS Plugin for Least-Squares Adjustment of Survey Networks"
-  year: 2024
+  year: 2026
   url: "https://github.com/Osman-Geomatics93/survey_adjustment"
   version: "1.0.2"
   repository-code: "https://github.com/Osman-Geomatics93/survey_adjustment"

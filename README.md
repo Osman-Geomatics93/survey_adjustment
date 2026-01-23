@@ -830,7 +830,7 @@ If you use this plugin in academic research, publications, or professional repor
   author       = {Ibrahim, Osman},
   title        = {{Survey Adjustment \& Network Analysis}: A {QGIS} Plugin
                   for Least-Squares Adjustment of Survey Networks},
-  year         = {2024},
+  year         = {2026},
   month        = dec,
   publisher    = {GitHub},
   version      = {1.0.2},
@@ -844,42 +844,42 @@ If you use this plugin in academic research, publications, or professional repor
 <details>
 <summary><strong>APA 7th Edition</strong></summary>
 
-> Ibrahim, O. (2024). *Survey Adjustment & Network Analysis* (Version 1.0.2) [QGIS Plugin]. GitHub. https://github.com/Osman-Geomatics93/survey_adjustment
+> Ibrahim, O. (2026). *Survey Adjustment & Network Analysis* (Version 1.0.2) [QGIS Plugin]. GitHub. https://github.com/Osman-Geomatics93/survey_adjustment
 
 </details>
 
 <details>
 <summary><strong>IEEE</strong></summary>
 
-> O. Ibrahim, "Survey Adjustment & Network Analysis," GitHub, 2024. [Online]. Available: https://github.com/Osman-Geomatics93/survey_adjustment. [Accessed: Date].
+> O. Ibrahim, "Survey Adjustment & Network Analysis," GitHub, 2026. [Online]. Available: https://github.com/Osman-Geomatics93/survey_adjustment. [Accessed: Date].
 
 </details>
 
 <details>
 <summary><strong>Chicago (Author-Date)</strong></summary>
 
-> Ibrahim, Osman. 2024. "Survey Adjustment & Network Analysis: A QGIS Plugin for Least-Squares Adjustment of Survey Networks." GitHub. https://github.com/Osman-Geomatics93/survey_adjustment.
+> Ibrahim, Osman. 2026. "Survey Adjustment & Network Analysis: A QGIS Plugin for Least-Squares Adjustment of Survey Networks." GitHub. https://github.com/Osman-Geomatics93/survey_adjustment.
 
 </details>
 
 <details>
 <summary><strong>Harvard</strong></summary>
 
-> Ibrahim, O. (2024) *Survey Adjustment & Network Analysis* (Version 1.0.2). Available at: https://github.com/Osman-Geomatics93/survey_adjustment (Accessed: Date).
+> Ibrahim, O. (2026) *Survey Adjustment & Network Analysis* (Version 1.0.2). Available at: https://github.com/Osman-Geomatics93/survey_adjustment (Accessed: Date).
 
 </details>
 
 <details>
 <summary><strong>MLA 9th Edition</strong></summary>
 
-> Ibrahim, Osman. *Survey Adjustment & Network Analysis*. Version 1.0.2, GitHub, 2024, https://github.com/Osman-Geomatics93/survey_adjustment.
+> Ibrahim, Osman. *Survey Adjustment & Network Analysis*. Version 1.0.2, GitHub, 2026, https://github.com/Osman-Geomatics93/survey_adjustment.
 
 </details>
 
 ### Plain Text
 
 ```
-Ibrahim, Osman (2024). Survey Adjustment & Network Analysis: A QGIS Plugin
+Ibrahim, Osman (2026). Survey Adjustment & Network Analysis: A QGIS Plugin
 for Least-Squares Adjustment of Survey Networks (Version 1.0.2).
 GitHub. https://github.com/Osman-Geomatics93/survey_adjustment
 ```
