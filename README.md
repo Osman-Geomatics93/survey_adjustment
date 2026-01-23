@@ -40,35 +40,35 @@ A comprehensive **least-squares adjustment** engine for professional surveying w
 
 ```mermaid
 flowchart LR
-    subgraph Input["📁 Input Data"]
+    subgraph Input[Input Data]
         A[Points CSV]
         B[Observations CSV]
     end
 
-    subgraph Processing["⚙️ Processing"]
+    subgraph Processing[Processing Engine]
         C{Adjustment Type}
         C --> D[2D Classical]
         C --> E[1D Leveling]
         C --> F[3D GNSS]
         C --> G[Mixed]
-
-        D & E & F & G --> H[Least Squares Engine]
-        H --> I[Robust IRLS]
-        I --> J[Statistical Analysis]
+        D --> H[Least Squares]
+        E --> H
+        F --> H
+        G --> H
+        H --> I[Statistics]
     end
 
-    subgraph Output["📊 Output"]
-        K[JSON Report]
-        L[HTML Report]
-        M[GeoPackage]
+    subgraph Output[Output Files]
+        J[JSON Report]
+        K[HTML Report]
+        L[GeoPackage]
     end
 
-    A & B --> C
-    J --> K & L & M
-
-    style Input fill:#e1f5fe
-    style Processing fill:#fff3e0
-    style Output fill:#e8f5e9
+    A --> C
+    B --> C
+    I --> J
+    I --> K
+    I --> L
 ```
 
 ---
@@ -782,18 +782,24 @@ See the [Citation](#citation) section below for BibTeX format.
 
 ### Planned Features
 
-```mermaid
-timeline
-    title Development Roadmap
-    section v1.1
-        Network Sketching : Auto-generate network diagrams
-        Batch Processing : Process multiple files
-    section v1.2
-        Additional Exports : DXF, KML, Shapefile
-        Free Station : Resection algorithm
-    section v2.0
-        Web Interface : Browser-based processing
-        3D Visualization : Interactive 3D network view
+```
+ROADMAP
+═══════════════════════════════════════════════════════════════════════
+│
+│  v1.1 ──────────────────────────────────────────────────────────────
+│  ├── Network Sketching (auto-generate network diagrams)
+│  └── Batch Processing (process multiple files)
+│
+│  v1.2 ──────────────────────────────────────────────────────────────
+│  ├── Additional Exports (DXF, KML, Shapefile)
+│  ├── Free Station (resection algorithm)
+│  └── Helmert Transformation Tools
+│
+│  v2.0 ──────────────────────────────────────────────────────────────
+│  ├── 3D Network Visualization
+│  └── Deformation Analysis
+│
+═══════════════════════════════════════════════════════════════════════
 ```
 
 | Version | Feature | Status |
