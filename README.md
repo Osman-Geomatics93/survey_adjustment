@@ -831,7 +831,7 @@ If you use this plugin in academic research, publications, or professional repor
   title        = {{Survey Adjustment \& Network Analysis}: A {QGIS} Plugin
                   for Least-Squares Adjustment of Survey Networks},
   year         = {2026},
-  month        = dec,
+  month        = jan,
   publisher    = {GitHub},
   version      = {1.0.2},
   url          = {https://github.com/Osman-Geomatics93/survey_adjustment},
