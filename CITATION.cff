@@ -1,0 +1,48 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://citation-file-format.github.io/ for more information.
+
+cff-version: 1.2.0
+title: "Survey Adjustment & Network Analysis"
+message: >-
+  If you use this software in your research or professional work,
+  please cite it using the metadata from this file.
+type: software
+authors:
+  - given-names: Osman
+    family-names: Ibrahim
+    email: 422436@ogr.ktu.edu.tr
+    affiliation: Karadeniz Technical University
+    orcid: ""
+repository-code: "https://github.com/Osman-Geomatics93/survey_adjustment"
+url: "https://github.com/Osman-Geomatics93/survey_adjustment"
+repository-artifact: "https://github.com/Osman-Geomatics93/survey_adjustment/releases"
+abstract: >-
+  A production-ready QGIS plugin for least-squares adjustment of survey
+  networks. Supports 2D classical networks (distances, directions, angles),
+  1D leveling, 3D GNSS baseline adjustment with full covariance, and mixed
+  observations. Features robust estimation (IRLS with Huber, Danish, IGG-III),
+  statistical testing, reliability analysis, and comprehensive reporting.
+keywords:
+  - surveying
+  - geodesy
+  - least-squares adjustment
+  - network adjustment
+  - QGIS plugin
+  - GNSS
+  - leveling
+  - traverse
+  - error ellipse
+  - robust estimation
+license: GPL-2.0-or-later
+version: "1.0.2"
+date-released: "2024-12-01"
+preferred-citation:
+  type: software
+  authors:
+    - given-names: Osman
+      family-names: Ibrahim
+  title: "Survey Adjustment & Network Analysis: A QGIS Plugin for Least-Squares Adjustment of Survey Networks"
+  year: 2024
+  url: "https://github.com/Osman-Geomatics93/survey_adjustment"
+  version: "1.0.2"
+  repository-code: "https://github.com/Osman-Geomatics93/survey_adjustment"
