@@ -530,39 +530,50 @@ Machine-readable format including:
 
 ### Observation Equations
 
-**2D Distance:**
-$$l_{ij} = \sqrt{(E_j-E_i)^2 + (N_j-N_i)^2}$$
+| Observation Type | Equation |
+|:-----------------|:---------|
+| **2D Distance** | $l_{ij} = \sqrt{(E_j - E_i)^2 + (N_j - N_i)^2}$ |
+| **2D Direction** | $\alpha_{ij} = \arctan2(E_j - E_i, N_j - N_i)$ |
+| **Direction (with orientation)** | $l_{ij} = \alpha_{ij} + \omega_s$ |
+| **2D Angle** | $l_{ikj} = \alpha_{kj} - \alpha_{ki}$ |
+| **1D Leveling** | $l_{ij} = H_j - H_i$ |
+| **3D GNSS Baseline** | $\mathbf{l}_{ij} = [dE, dN, dH]^T = [E_j - E_i, N_j - N_i, H_j - H_i]^T$ |
 
-**2D Direction (Azimuth from North, clockwise):**
-$$\alpha_{ij}=\text{atan2}(E_j-E_i,\;N_j-N_i)$$
-
-**Direction with orientation unknown:**
-$$l_{ij}=\alpha_{ij}+\omega_s$$
-
-**2D Angle:**
-$$l_{ikj} = \alpha_{kj} - \alpha_{ki}$$
-
-**1D Leveling:**
-$$l_{ij} = H_j - H_i$$
-
-**3D GNSS Baseline:**
-$$\mathbf{l}_{ij}= \begin{bmatrix} dE \\ dN \\ dH \end{bmatrix} = \begin{bmatrix} E_j-E_i \\ N_j-N_i \\ H_j-H_i \end{bmatrix}$$
+> **Note:** Azimuth is measured from North, clockwise positive.
 
 ### Least Squares Solution
 
-Linearized model around initial estimate:
-$$\mathbf{w} = \mathbf{l} - \mathbf{f}(\mathbf{x}_0),\quad \mathbf{A}=\frac{\partial \mathbf{f}}{\partial \mathbf{x}}\bigg\rvert_{\mathbf{x}_0}$$
+**Linearized model:**
 
-Normal equations:
-$$\mathbf{N} = \mathbf{A}^T\mathbf{P}\mathbf{A},\quad \mathbf{n} = \mathbf{A}^T\mathbf{P}\mathbf{w},\quad \delta\mathbf{x} = \mathbf{N}^{-1}\mathbf{n}$$
+$$\mathbf{w} = \mathbf{l} - \mathbf{f}(\mathbf{x}_0)$$
 
-A-posteriori variance factor:
-$$\hat{\sigma}_0^2 = \frac{\mathbf{v}^T\mathbf{P}\mathbf{v}}{\nu},\quad \nu = m-u$$
+$$\mathbf{A} = \frac{\partial \mathbf{f}}{\partial \mathbf{x}} \Big|_{\mathbf{x}_0}$$
+
+**Normal equations:**
+
+$$\mathbf{N} = \mathbf{A}^T \mathbf{P} \mathbf{A}$$
+
+$$\mathbf{n} = \mathbf{A}^T \mathbf{P} \mathbf{w}$$
+
+$$\delta \mathbf{x} = \mathbf{N}^{-1} \mathbf{n}$$
+
+**A-posteriori variance factor:**
+
+$$\hat{\sigma}_0^2 = \frac{\mathbf{v}^T \mathbf{P} \mathbf{v}}{\nu}$$
+
+where $\nu = m - u$ (degrees of freedom = observations - unknowns)
 
 ### Error Ellipses
 
-From the 2×2 covariance matrix, eigenvalues define semi-axes:
-$$a = \sqrt{\lambda_1}\cdot k,\quad b = \sqrt{\lambda_2}\cdot k,\quad k=\sqrt{\chi^2_{p,2}}$$
+From the 2×2 covariance matrix, eigenvalues $\lambda_1 \geq \lambda_2$ define semi-axes:
+
+$$a = \sqrt{\lambda_1} \cdot k$$
+
+$$b = \sqrt{\lambda_2} \cdot k$$
+
+$$k = \sqrt{\chi^2_{p,2}}$$
+
+where $p$ is the confidence level (default 0.95)
 
 ---
 
@@ -590,18 +601,30 @@ Iteratively Reweighted Least Squares automatically handles outliers:
 ## Statistics & Reliability
 
 ### Global Test (Chi-Square)
-$$T = \frac{\mathbf{v}^T\mathbf{P}\mathbf{v}}{\sigma_0^2} \sim \chi^2_\nu$$
+
+$$T = \frac{\mathbf{v}^T \mathbf{P} \mathbf{v}}{\sigma_0^2}$$
+
+The test statistic $T$ follows a chi-square distribution with $\nu$ degrees of freedom.
 
 ### Local Test (Standardized Residuals)
-$$w_i = \frac{v_i}{\sigma_0\sqrt{q_{vv,ii}}}$$
+
+$$w_i = \frac{v_i}{\sigma_0 \sqrt{q_{vv,ii}}}$$
+
+Observations with $|w_i| > 3.0$ are flagged as potential outliers.
 
 ### Reliability Metrics
 
-| Metric | Formula | Purpose |
-|:-------|:--------|:--------|
-| Redundancy Number | $r_i = q_{vv,ii} \cdot p_i$ | Internal reliability |
-| MDB | $(k_\alpha + k_\beta)\hat{\sigma}_0\frac{\sigma_i}{\sqrt{r_i}}$ | Minimal detectable bias |
-| External Reliability | $\delta\mathbf{x}_i = \mathbf{Q}_{xx}(p_i\mathbf{A}_i^T)\text{MDB}_i$ | Parameter impact |
+| Metric | Description |
+|:-------|:------------|
+| **Redundancy Number** | $r_i = q_{vv,ii} \cdot p_i$ — measures internal reliability |
+| **MDB** | Minimal Detectable Bias — smallest blunder that can be detected |
+| **External Reliability** | Impact of undetected blunder on adjusted coordinates |
+
+**MDB Formula:**
+
+$$MDB_i = (k_\alpha + k_\beta) \cdot \hat{\sigma}_0 \cdot \frac{\sigma_i}{\sqrt{r_i}}$$
+
+where $k_\alpha$ and $k_\beta$ are statistical constants for significance and power.
 
 ---
 
