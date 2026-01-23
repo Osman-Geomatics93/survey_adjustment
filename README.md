@@ -15,11 +15,19 @@
 </p>
 
 <p align="center">
-  <a href="#-features">Features</a> •
-  <a href="#-video-tutorials">Tutorials</a> •
-  <a href="#-installation">Installation</a> •
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-documentation">Documentation</a>
+  <a href="https://github.com/Osman-Geomatics93/survey_adjustment/stargazers"><img src="https://img.shields.io/github/stars/Osman-Geomatics93/survey_adjustment?style=flat-square&logo=github" alt="GitHub Stars"></a>
+  <a href="https://github.com/Osman-Geomatics93/survey_adjustment/network/members"><img src="https://img.shields.io/github/forks/Osman-Geomatics93/survey_adjustment?style=flat-square&logo=github" alt="GitHub Forks"></a>
+  <a href="https://github.com/Osman-Geomatics93/survey_adjustment/issues"><img src="https://img.shields.io/github/issues/Osman-Geomatics93/survey_adjustment?style=flat-square&logo=github" alt="GitHub Issues"></a>
+  <a href="https://github.com/Osman-Geomatics93/survey_adjustment/commits/master"><img src="https://img.shields.io/github/last-commit/Osman-Geomatics93/survey_adjustment?style=flat-square&logo=github" alt="Last Commit"></a>
+</p>
+
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#video-tutorials">Tutorials</a> •
+  <a href="#sample-data--examples">Examples</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#faq">FAQ</a> •
+  <a href="#roadmap">Roadmap</a>
 </p>
 
 ---
@@ -28,31 +36,58 @@
 
 A comprehensive **least-squares adjustment** engine for professional surveying workflows inside QGIS. This plugin transforms QGIS into a powerful geodetic computation platform, supporting everything from simple leveling runs to complex mixed GNSS/classical networks.
 
+### Workflow Diagram
+
+```mermaid
+flowchart LR
+    subgraph Input["📁 Input Data"]
+        A[Points CSV]
+        B[Observations CSV]
+    end
+
+    subgraph Processing["⚙️ Processing"]
+        C{Adjustment Type}
+        C --> D[2D Classical]
+        C --> E[1D Leveling]
+        C --> F[3D GNSS]
+        C --> G[Mixed]
+
+        D & E & F & G --> H[Least Squares Engine]
+        H --> I[Robust IRLS]
+        I --> J[Statistical Analysis]
+    end
+
+    subgraph Output["📊 Output"]
+        K[JSON Report]
+        L[HTML Report]
+        M[GeoPackage]
+    end
+
+    A & B --> C
+    J --> K & L & M
+
+    style Input fill:#e1f5fe
+    style Processing fill:#fff3e0
+    style Output fill:#e8f5e9
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Survey Adjustment Plugin                      │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐            │
-│  │   2D    │  │   1D    │  │   3D    │  │  Mixed  │            │
-│  │Classical│  │Leveling │  │  GNSS   │  │Combined │            │
-│  └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘            │
-│       │            │            │            │                  │
-│       └────────────┴────────────┴────────────┘                  │
-│                         │                                       │
-│              ┌──────────▼──────────┐                           │
-│              │  Least Squares      │                           │
-│              │  + Robust IRLS      │                           │
-│              │  + Statistics       │                           │
-│              └──────────┬──────────┘                           │
-│                         │                                       │
-│       ┌─────────────────┼─────────────────┐                    │
-│       ▼                 ▼                 ▼                    │
-│  ┌─────────┐      ┌─────────┐      ┌─────────┐                │
-│  │  JSON   │      │  HTML   │      │GeoPackage│                │
-│  │ Report  │      │ Report  │      │ Layers  │                │
-│  └─────────┘      └─────────┘      └─────────┘                │
-└─────────────────────────────────────────────────────────────────┘
-```
+
+---
+
+## Why This Plugin?
+
+| Feature | This Plugin | Commercial Software | Manual Excel |
+|:--------|:-----------:|:-------------------:|:------------:|
+| **Cost** | Free & Open Source | $500 - $5000+ | Free |
+| **QGIS Integration** | Native | No | No |
+| **2D Network Adjustment** | Yes | Yes | Limited |
+| **1D Leveling** | Yes | Yes | Yes |
+| **3D GNSS with Covariance** | Full 3×3 | Varies | No |
+| **Mixed Observations** | Yes | Some | No |
+| **Robust Estimation** | 3 Methods | Varies | No |
+| **Reliability Analysis** | MDB + External | Some | No |
+| **Reproducible Reports** | JSON + HTML | Proprietary | Manual |
+| **Customizable** | Open Source | No | Yes |
+| **No Dependencies** | NumPy only | Various | N/A |
 
 ---
 
@@ -591,11 +626,223 @@ pytest
 
 ---
 
+## FAQ
+
+<details>
+<summary><strong>What coordinate system should I use?</strong></summary>
+
+The plugin works with **projected coordinates** (Easting/Northing in meters). For best results:
+- Use a local projection appropriate for your survey area
+- UTM zones work well for most applications
+- The plugin does not perform coordinate transformations
+
+</details>
+
+<details>
+<summary><strong>What units are expected for angles?</strong></summary>
+
+- **Directions and Angles:** Degrees in CSV input (converted to radians internally)
+- **Sigma values for directions:** Arc-seconds (")
+- The QGIS interface provides unit selection options
+
+</details>
+
+<details>
+<summary><strong>Why does the Chi-square test fail?</strong></summary>
+
+A failed Chi-square test usually indicates:
+1. **Overly optimistic sigmas** - Your observation uncertainties are too small
+2. **Systematic errors** - Unmodeled biases in observations
+3. **Blunders** - Gross errors in one or more observations
+
+**Solution:** Check observations with high standardized residuals (|w| > 3) and consider using robust estimation.
+
+</details>
+
+<details>
+<summary><strong>What's the difference between directions and angles?</strong></summary>
+
+- **Direction:** Azimuth from one point to another, requires orientation unknown per setup
+- **Angle:** Measured angle at a station between two targets, directly observed
+
+Use directions when you have a series of pointings from one setup. Use angles when you directly measured the included angle.
+
+</details>
+
+<details>
+<summary><strong>How do I handle GNSS baselines with correlations?</strong></summary>
+
+Provide the full covariance matrix in your baselines CSV:
+```csv
+obs_id,from_id,to_id,dE,dN,dH,cov_EE,cov_EN,cov_EH,cov_NN,cov_NH,cov_HH
+```
+The plugin will properly weight correlated components.
+
+</details>
+
+<details>
+<summary><strong>Can I use the plugin without QGIS?</strong></summary>
+
+Yes! The core computation module (`survey_adjustment/core/`) is QGIS-independent and can be used as a standalone Python library:
+
+```python
+from survey_adjustment.core.models import Network, Point
+from survey_adjustment.core.solver import adjust_network_2d
+```
+
+</details>
+
+<details>
+<summary><strong>How do I cite this plugin in publications?</strong></summary>
+
+See the [Citation](#citation) section below for BibTeX format.
+
+</details>
+
+---
+
+## Troubleshooting
+
+### Common Issues and Solutions
+
+<details>
+<summary><strong>Error: "Singular matrix" or "Matrix is not invertible"</strong></summary>
+
+**Cause:** The network has a datum defect (insufficient constraints).
+
+**Solutions:**
+1. Fix at least 2 points for horizontal adjustment (E and N)
+2. Fix at least 1 point for height/leveling
+3. Ensure direction sets have orientation constraints
+4. Enable "Auto-Datum" option for automatic constraint application
+
+</details>
+
+<details>
+<summary><strong>Error: "Point not found: XYZ"</strong></summary>
+
+**Cause:** An observation references a point ID that doesn't exist in the points CSV.
+
+**Solution:** Check that all `from_id`, `to_id`, and `at_id` values in observations match exactly with `point_id` values in points CSV (case-sensitive).
+
+</details>
+
+<details>
+<summary><strong>Adjustment doesn't converge</strong></summary>
+
+**Cause:** Initial coordinates are too far from true positions, or observations contain gross errors.
+
+**Solutions:**
+1. Improve initial coordinate approximations
+2. Check for blunders in observations (sign errors, unit mistakes)
+3. Use robust estimation to downweight outliers
+4. Verify observation values and units
+
+</details>
+
+<details>
+<summary><strong>Very large residuals on some observations</strong></summary>
+
+**Cause:** Likely a blunder or data entry error.
+
+**Solutions:**
+1. Check flagged observations (⚑) in the report
+2. Verify observation values (decimal point, units)
+3. Check for sign errors in height differences
+4. Use robust estimation to identify and downweight outliers
+
+</details>
+
+<details>
+<summary><strong>Plugin not appearing in Processing Toolbox</strong></summary>
+
+**Solutions:**
+1. Ensure plugin is enabled in Plugin Manager
+2. Restart QGIS
+3. Check for error messages in: `Plugins → Manage and Install Plugins → Installed`
+4. Verify QGIS version is 3.22 or later
+
+</details>
+
+<details>
+<summary><strong>CSV parsing errors</strong></summary>
+
+**Solutions:**
+1. Ensure CSV uses comma (,) as delimiter
+2. Use period (.) as decimal separator
+3. Check for BOM characters (save as UTF-8 without BOM)
+4. Verify column names match expected format
+5. Remove any trailing commas or empty rows
+
+</details>
+
+---
+
+## Roadmap
+
+### Planned Features
+
+```mermaid
+timeline
+    title Development Roadmap
+    section v1.1
+        Network Sketching : Auto-generate network diagrams
+        Batch Processing : Process multiple files
+    section v1.2
+        Additional Exports : DXF, KML, Shapefile
+        Free Station : Resection algorithm
+    section v2.0
+        Web Interface : Browser-based processing
+        3D Visualization : Interactive 3D network view
+```
+
+| Version | Feature | Status |
+|:--------|:--------|:------:|
+| **v1.1** | Network visualization / sketching | Planned |
+| **v1.1** | Batch processing for multiple networks | Planned |
+| **v1.2** | Export to DXF format | Planned |
+| **v1.2** | Free station (resection) algorithm | Planned |
+| **v1.2** | Helmert transformation tools | Planned |
+| **v2.0** | 3D network visualization | Future |
+| **v2.0** | Deformation analysis | Future |
+
+> Have a feature request? [Open an issue](https://github.com/Osman-Geomatics93/survey_adjustment/issues/new?template=feature_request.md)!
+
+---
+
+## Citation
+
+If you use this plugin in your research or professional work, please cite it:
+
+### BibTeX
+
+```bibtex
+@software{ibrahim2024surveyadjustment,
+  author       = {Ibrahim, Osman},
+  title        = {Survey Adjustment \& Network Analysis: A QGIS Plugin for
+                  Least-Squares Adjustment of Survey Networks},
+  year         = {2024},
+  publisher    = {GitHub},
+  url          = {https://github.com/Osman-Geomatics93/survey_adjustment},
+  version      = {1.0.2}
+}
+```
+
+### APA Format
+
+Ibrahim, O. (2024). *Survey Adjustment & Network Analysis* (Version 1.0.2) [Computer software]. GitHub. https://github.com/Osman-Geomatics93/survey_adjustment
+
+### Plain Text
+
+Ibrahim, Osman. "Survey Adjustment & Network Analysis: A QGIS Plugin for Least-Squares Adjustment of Survey Networks." GitHub, 2024, https://github.com/Osman-Geomatics93/survey_adjustment.
+
+---
+
 ## Support & Contributing
 
 ### Found a Bug?
 
-Please open an issue with:
+Please [open an issue](https://github.com/Osman-Geomatics93/survey_adjustment/issues/new?template=bug_report.md) with:
 - Input CSV files
 - Output JSON/HTML report
 - QGIS version and plugin version
@@ -603,16 +850,22 @@ Please open an issue with:
 
 ### Want to Contribute?
 
-Pull requests are welcome! Please ensure:
-- Tests pass (`pytest`)
-- Code follows existing patterns
-- Documentation is updated
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) first.
+
+- Fork the repository
+- Create a feature branch
+- Make your changes
+- Submit a pull request
 
 ### Links
 
-- **Repository:** https://github.com/Osman-Geomatics93/survey_adjustment
-- **Issues:** https://github.com/Osman-Geomatics93/survey_adjustment/issues
-- **Releases:** https://github.com/Osman-Geomatics93/survey_adjustment/releases
+| Resource | Link |
+|:---------|:-----|
+| Repository | https://github.com/Osman-Geomatics93/survey_adjustment |
+| Issues | https://github.com/Osman-Geomatics93/survey_adjustment/issues |
+| Releases | https://github.com/Osman-Geomatics93/survey_adjustment/releases |
+| Changelog | [CHANGELOG.md](CHANGELOG.md) |
+| Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
 ---
 
@@ -626,12 +879,38 @@ See [LICENSE](LICENSE) for details.
 
 ## Author
 
-**Osman Ibrahim**
-Email: 422436@ogr.ktu.edu.tr
-GitHub: [@Osman-Geomatics93](https://github.com/Osman-Geomatics93)
+<p align="center">
+  <img src="https://github.com/Osman-Geomatics93.png" width="100" style="border-radius: 50%;">
+</p>
+
+<p align="center">
+  <strong>Osman Ibrahim</strong><br>
+  Geomatics Engineer & Developer
+</p>
+
+<p align="center">
+  <a href="mailto:422436@ogr.ktu.edu.tr">Email</a> •
+  <a href="https://github.com/Osman-Geomatics93">GitHub</a>
+</p>
+
+---
+
+## Star History
+
+If you find this plugin useful, please consider giving it a star! It helps others discover the project.
+
+<p align="center">
+  <a href="https://github.com/Osman-Geomatics93/survey_adjustment/stargazers">
+    <img src="https://img.shields.io/github/stars/Osman-Geomatics93/survey_adjustment?style=social" alt="GitHub Stars">
+  </a>
+</p>
 
 ---
 
 <p align="center">
   <sub>Made with dedication for the surveying community</sub>
+</p>
+
+<p align="center">
+  <a href="#survey-adjustment--network-analysis">Back to top</a>
 </p>
