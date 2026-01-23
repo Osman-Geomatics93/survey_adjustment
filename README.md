@@ -320,18 +320,54 @@ Residuals Summary (flagged observations)
 
 ## Quick Start
 
-### Step 1: Prepare Your Data
+### One-Click Install
 
-Create CSV files for your survey data following the formats below.
+Copy and run in QGIS Python Console to install:
 
-### Step 2: Run an Algorithm
-
+```python
+# Install from QGIS Plugin Repository
+import pyplugin_installer
+pyplugin_installer.instance().fetchAvailablePlugins(False)
+pyplugin_installer.instance().installPlugin('survey_adjustment')
 ```
-Processing Toolbox → Survey Adjustment → [Select Algorithm]
+
+Or download manually:
+
+```bash
+# Clone repository
+git clone https://github.com/Osman-Geomatics93/survey_adjustment.git
+
+# Copy to QGIS plugins folder (Windows)
+xcopy /E /I survey_adjustment "%APPDATA%\QGIS\QGIS3\profiles\default\python\plugins\survey_adjustment"
+
+# Copy to QGIS plugins folder (Linux/Mac)
+cp -r survey_adjustment ~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/
 ```
 
-### Step 3: Review Results
+### Quick Example (2D Network)
 
+**1. Create `points.csv`:**
+```csv
+point_id,easting,northing,fixed_easting,fixed_northing
+A,1000.000,2000.000,true,true
+B,1000.000,2100.000,true,true
+C,1050.000,2050.000,false,false
+```
+
+**2. Create `distances.csv`:**
+```csv
+obs_id,from_id,to_id,distance,sigma
+D01,A,C,70.711,0.005
+D02,B,C,70.711,0.005
+D03,A,B,100.000,0.005
+```
+
+**3. Run in QGIS:**
+```
+Processing Toolbox → Survey Adjustment → Adjust Network (2D)
+```
+
+**4. Review Results:**
 - Open the **HTML report** for a comprehensive summary
 - Load the **GeoPackage** layers to visualize results in QGIS
 - Use the **JSON report** for further processing or archival
@@ -914,6 +950,7 @@ Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md)
 | Releases | https://github.com/Osman-Geomatics93/survey_adjustment/releases |
 | Changelog | [CHANGELOG.md](CHANGELOG.md) |
 | Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Security | [SECURITY.md](SECURITY.md) |
 
 ---
 
