@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="icon.svg" alt="Survey Adjustment Logo" width="128">
+  <img src="icon.png" alt="Survey Adjustment Logo" width="128">
 </p>
 
 <h1 align="center">Survey Adjustment & Network Analysis</h1>
