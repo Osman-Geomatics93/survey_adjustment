@@ -50,10 +50,6 @@ Internal reliability is reported as the Minimal Detectable Bias $\mathrm{MDB}_i 
 
 The repository ships five worked datasets — 1D leveling, a 2D traverse, 2D trilateration, a 3D GNSS network, and a mixed network — each with committed JSON, HTML, and GeoPackage outputs under `examples/` that serve as both a walkthrough and validation fixtures. A user loads the input tables, runs the relevant algorithm from the Processing toolbox, and inspects the adjusted points, error ellipses, and residual diagnostics added to the map canvas. Installation and input formats are documented in the README, with contributing guidelines, a security policy, and issue and pull-request templates for the community.
 
-# AI usage
-
-Generative AI assistance (a large language model) was used to support drafting and editing of documentation and of this paper, and routine coding tasks. All software design decisions, the mathematical formulation and its implementation, and the verification of results against the example datasets were carried out and reviewed by the author, who is responsible for the correctness of the software and the content of this paper.
-
 # Acknowledgements
 
 The author thanks the QGIS and NumPy communities, whose open-source projects this plugin builds upon. No external financial support was received for this work.

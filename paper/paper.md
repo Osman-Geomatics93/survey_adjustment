@@ -112,10 +112,6 @@ The repository ships five worked example datasets — 1D leveling, a 2D traverse
 
 The software targets a recurring need in surveying and geodesy: an auditable, reproducible adjustment that lives inside the GIS where the spatial data already resides. By exposing the engine as a Processing provider with both machine-readable JSON (including the full covariance matrix and a settings snapshot) and spatial-layer outputs, it is positioned to be cited in two ways. First, as a teaching and methods reference: the open, from-scratch implementation of the Gauss–Markov model, data snooping, redundancy numbers, and Baarda reliability — together with the five committed example datasets and their expected outputs — provides a self-checkable resource for surveying and geodesy courses and for practitioners validating their own workflows. Second, as a reusable processing component: because the numerical core is importable outside QGIS and the QGIS algorithms are scriptable from the Python console and the model designer, adjustment with quality control can be embedded directly in reproducible geospatial pipelines and downstream studies, which is the typical pathway by which open geospatial tooling accrues citations. As an early-stage release the project does not yet report download or adoption metrics; the impact argument rests on the absence of a comparable free, QGIS-native, scriptable adjustment tool and on the reproducibility affordances described above.
 
-# AI usage
-
-Generative AI assistance (a large language model) was used to support drafting and editing of documentation and of this paper, and to assist with routine coding tasks. All software design decisions, the mathematical formulation and its implementation, and the verification of results against the committed example datasets were carried out and reviewed by the author, who is responsible for the correctness of the software and the content of this paper.
-
 # Acknowledgements
 
 The author thanks the QGIS and NumPy communities, whose open-source projects this plugin builds upon. No external financial support was received for this work.
