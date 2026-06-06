@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.2] - 2024-12-XX
+## [1.0.2] - 2026-01-23
 
 ### Fixed
 - Fixed `QgsLineString.addVertex()` TypeError in 3D GNSS and Mixed algorithms
@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.1] - 2024-11-XX
+## [1.0.1] - 2026-01-22
 
 ### Fixed
 - Minor bug fixes in constraint health analysis
@@ -36,7 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.0] - 2024-10-XX
+## [1.0.0] - 2026-01-22
 
 ### Added
 - **2D Classical Network Adjustment**
@@ -103,9 +103,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |:--------|:-----|:-----------|
-| 1.0.2 | 2024-12 | Bug fixes for 3D algorithms |
-| 1.0.1 | 2024-11 | Documentation and parsing improvements |
-| 1.0.0 | 2024-10 | Initial release with full functionality |
+| 1.0.2 | 2026-01-23 | Bug fixes for 3D algorithms |
+| 1.0.1 | 2026-01-22 | Documentation and parsing improvements |
+| 1.0.0 | 2026-01-22 | Initial release with full functionality |
 
 ---
 

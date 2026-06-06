@@ -106,11 +106,11 @@ intentions; optionally name any co-maintainers or none.]
 
 ## C. Housekeeping to do BEFORE posting this (so the record is consistent)
 An editor may cross-check dates, so reconcile these first:
-1. **Date inconsistency.** `CHANGELOG.md` lists releases as 2024-10/11/12
-   ("2024-…-XX"), while `metadata.txt`/`CITATION.cff` and the repo activity point to
-   2026, and `paper.md` is dated 2026. Pick the correct real dates and make the
-   CHANGELOG, CITATION.cff, metadata.txt, and paper.md agree. Replace the "-XX" day
-   placeholders with actual days.
+1. **Date consistency — RESOLVED.** Release dates are now reconciled to January
+   2026 across `CHANGELOG.md` (v1.0.0 = 2026-01-22, v1.0.1 = 2026-01-22,
+   v1.0.2 = 2026-01-23), `CITATION.cff` (`date-released: 2026-01-23`), and the
+   BibTeX key in `README.md`, matching the commit history. No `-XX` placeholders
+   remain.
 2. **Grow a little public signal where cheap and honest.** Before/at submission,
    create real **tagged GitHub Releases** matching the versions, enable Issues, and
    (optionally) open a couple of genuine tracking issues for the roadmap items. This

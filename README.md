@@ -885,7 +885,7 @@ If you use this plugin in academic research, publications, or professional repor
 <summary><strong>BibTeX</strong> (LaTeX)</summary>
 
 ```bibtex
-@software{ibrahim_survey_adjustment_2024,
+@software{ibrahim_survey_adjustment_2026,
   author       = {Ibrahim, Osman Osama Ahmed},
   title        = {{Survey Adjustment \& Network Analysis}: A {QGIS} Plugin
                   for Least-Squares Adjustment of Survey Networks},
