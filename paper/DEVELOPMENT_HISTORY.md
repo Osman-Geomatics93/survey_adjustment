@@ -8,8 +8,8 @@ nonetheless meets JOSS's actual bar — *substantial scholarly effort and a
 feature-complete, well-documented, tested research tool* — and is intended to be
 posted in the review thread if an editor or reviewer raises the question.
 
-Items in **[AUTHOR: …]** are placeholders only you can fill accurately — please
-complete or delete them before posting. **Do not invent dates or facts.**
+The author-specific context below has been completed from the author's own
+account of the project's development.
 
 ---
 
@@ -28,11 +28,11 @@ complete or delete them before posting. **Do not invent dates or facts.**
 > (no SciPy), robust IRLS estimation, Baarda-style internal/external reliability,
 > error-ellipse geometry, an automated test suite (113 tests, CI on Python
 > 3.10–3.12), five worked example datasets with committed expected outputs, and
-> full user documentation. [AUTHOR: add one sentence on the real development
-> timeline and context, e.g. "It was developed over [PERIOD] as part of
-> [coursework / MSc study / professional surveying work] at Karadeniz Technical
-> University."] I am committed to maintaining the project openly going forward and
-> am happy to address reviewer issues in public on this repository.
+> full user documentation. The plugin was developed independently over roughly
+> four to six months to support the author's own professional surveying work, and
+> it is already used in practice — in real survey projects, in teaching, and as a
+> research component. I am committed to maintaining the project openly going
+> forward and am happy to address reviewer issues in public on this repository.
 
 ---
 
@@ -80,27 +80,22 @@ versions **1.0.0, 1.0.1, and 1.0.2**, each with documented changes in
 `CHANGELOG.md`. This is an independent, third-party distribution channel with its
 own moderation and versioning, demonstrating that the tool was released and
 iterated, not freshly assembled for submission.
-[AUTHOR: if the QGIS repository page shows a download/usage count, cite it here —
-e.g. "The plugin has been downloaded N times via the QGIS repository." Only include
-a real figure.]
 
 ### B.4 Context and provenance
-[AUTHOR: provide the true background in 2–4 sentences. Useful points to include if
-accurate:
- - When and over what period the software was actually developed (private repo,
-   local development, etc.).
- - Whether it arose from MSc/PhD study, a course, or professional surveying work,
-   and at which institution (Karadeniz Technical University).
- - Whether it is used in teaching or in real survey projects.
-Do not fabricate; if the work was developed over a short, intense period, say so
-plainly — substance, not duration, is what matters.]
+The plugin was developed independently by the author over approximately four to
+six months, motivated by the needs of his own professional surveying work and the
+absence of a free, QGIS-native adjustment engine with rigorous quality-control
+diagnostics. The public GitHub history is recent because it marks the point at
+which an already-working tool was consolidated and opened for release, not the full
+development effort. The software is already applied in practice — in real survey
+projects, in teaching surveying and geodesy, and as a component in research — and
+the author intends to continue developing and maintaining it openly.
 
 ### B.5 Maintenance commitment
 The GitHub repository is now the canonical, public home of the project. I will
 conduct the JOSS review openly here, respond to issues and pull requests, and
 continue maintenance and the published roadmap (network sketching, batch
-processing, additional export formats). [AUTHOR: adjust to reflect your real
-intentions; optionally name any co-maintainers or none.]
+processing, additional export formats) as the sole maintainer.
 
 ---
 
