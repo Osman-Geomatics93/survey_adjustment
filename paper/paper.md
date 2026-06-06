@@ -42,17 +42,67 @@ The unmet need is therefore a free, open-source, QGIS-native least-squares engin
 
 The plugin is organised as a UI-independent numerical core wrapped by a thin QGIS integration layer. The core (`core/`) implements the observation models, the Gauss–Newton solver, the statistical tests, the reliability analysis, and the report writers, and depends only on NumPy; it has no QGIS imports and can be imported and exercised as a standalone Python module outside QGIS. The QGIS integration layer (`qgis_integration/`) registers a Processing provider with five algorithms and adapts QGIS feature tables to and from the core's data structures; the heavy QGIS imports are loaded lazily so that the core remains usable where QGIS is absent. Each adjustment algorithm writes adjusted-point, error-ellipse, and residual-vector feature sinks plus a no-geometry residuals table, all of which can be directed into a single GeoPackage, alongside the JSON and HTML reports. Avoiding SciPy is a deliberate trade-off: the chi-square cumulative distribution and quantile functions are implemented directly so that the plugin installs cleanly against a stock QGIS Python environment, accepting a small amount of additional numerical code in exchange for a minimal dependency footprint.
 
-# Mathematical background and functionality
+# Mathematical formulation
 
-Each solver linearizes the observation equations about approximate coordinates and solves the resulting Gauss–Markov model by weighted least squares using Gauss–Newton iteration [@ghilani2017; @koch1999]. Given the design matrix $A$, the observation weight matrix $P$ (the inverse of the cofactor matrix of the observations), and the misclosure vector $w$, the normal equations $N\,\hat{x} = u$ are formed explicitly with $N = A^{\mathsf{T}} P A$ and $u = A^{\mathsf{T}} P w$, and solved via `numpy.linalg.solve` rather than explicit inversion; a singular normal matrix is reported as a datum or connectivity problem. The parameter cofactor matrix $Q_{xx} = N^{-1}$ is computed by solving $N Q_{xx} = I$ rather than forming an explicit inverse, and the a-posteriori variance factor is
+All four solvers share a common weighted least-squares core built on the Gauss–Markov model [@ghilani2017; @mikhail1976; @koch1999]. This section states the equations the implementation actually evaluates. Coordinates are projected easting/northing in metres and azimuths follow the surveying convention (north $=0$, clockwise positive), so that $\alpha_{ij}=\operatorname{atan2}(E_j-E_i,\,N_j-N_i)$.
 
-$$\hat{\sigma}_0^2 = \frac{v^{\mathsf{T}} P v}{r},$$
+## Functional model
 
-where $v$ are the residuals and $r$ is the redundancy (degrees of freedom). The posterior coordinate covariance is $\hat{\sigma}_0^2 Q_{xx}$. Directions carry a per-setup orientation unknown, and angular misclosures are wrapped to $(-\pi, \pi]$. GNSS baselines are handled with full $3\times3$ per-baseline covariance assembled block-diagonally.
+Each measurement is related to the unknown coordinates by an observation equation:
 
-For quality control the plugin evaluates the chi-square global model test on $v^{\mathsf{T}} P v / \sigma_0^2$, standardized residuals $w_i = v_i / (\hat{\sigma}_0 \sqrt{(Q_{vv})_{ii}})$ for data snooping, and redundancy numbers $r_i = (Q_{vv})_{ii}\, p_i$. Internal reliability is reported as the Minimal Detectable Bias using the common scalar Baarda approximation $\mathrm{MDB}_i = (k_\alpha + k_\beta)\,\hat{\sigma}_0\, \sigma_i / \sqrt{r_i}$, and external reliability as the corresponding maximum coordinate impact [@baarda1968; @teunissen2006]. The chi-square cumulative distribution and quantile functions are computed without SciPy, via custom regularized incomplete-gamma routines (series expansion and continued fraction), with the standard-normal quantile taken from the Python standard library. Error ellipses are formed by eigen-decomposition of the $2\times2$ coordinate covariance, scaled to a configurable confidence level by the chi-square quantile.
+$$d_{ij} = \sqrt{(E_j-E_i)^2 + (N_j-N_i)^2} \qquad \text{(distance)},$$
 
-Robust estimation wraps the Gauss–Newton solver in an outer IRLS loop using the Huber, Danish, or IGG-III weight functions [@huber1964; @yang1999; @yang2001]; standardized residuals for reweighting use the a-priori variance factor to mitigate the masking effect, in which large outliers inflate $\hat{\sigma}_0$ and hide themselves. An optional auto-datum routine applies minimal (inner) constraints by fixing reference parameters when a network is otherwise unsolvable, recording an audit trail of every applied constraint. GNSS baseline processing follows standard practice for correlated three-component observations [@leick2015].
+$$r_{ij} = \alpha_{ij} + \omega_s \qquad \text{(direction, with a per-setup orientation unknown } \omega_s),$$
+
+$$\beta_{jik} = \alpha_{jk} - \alpha_{ji} \qquad \text{(angle at station } j \text{ from } i \text{ to } k),$$
+
+$$\Delta h_{ij} = H_j - H_i \qquad \text{(levelled height difference)},$$
+
+$$\mathbf{b}_{ij} = [\,\Delta E,\ \Delta N,\ \Delta H\,]^{\mathsf{T}} = [\,E_j - E_i,\ N_j - N_i,\ H_j - H_i\,]^{\mathsf{T}} \qquad \text{(GNSS baseline)} .$$
+
+Angular misclosures are wrapped to $(-\pi, \pi]$, and each GNSS baseline contributes a full $3\times3$ covariance block [@leick2015]. The mixed solver assembles all of the above into a single system.
+
+## Linearized weighted least squares
+
+Linearizing about approximate parameters $x_0$ yields the misclosure vector $w = l - f(x_0)$ and the Jacobian (design matrix) $A = \partial f / \partial x \big|_{x_0}$, with residuals $v = w - A\,\delta x$. With the weight matrix $P = Q_{ll}^{-1}$ — diagonal entries $p_i = 1/\sigma_i^2$ for uncorrelated observations and dense $3\times3$ blocks $\Sigma_b^{-1}$ for GNSS baselines — minimizing $v^{\mathsf{T}} P v$ gives the normal equations
+
+$$N\,\delta x = u, \qquad N = A^{\mathsf{T}} P A, \qquad u = A^{\mathsf{T}} P w ,$$
+
+solved with `numpy.linalg.solve` (no explicit inverse); a singular $N$ is reported as a datum or connectivity defect. The solution is iterated (Gauss–Newton), updating $x_0 \leftarrow x_0 + \delta x$ until the largest coordinate and orientation corrections fall below tolerance. The a-posteriori variance factor and parameter covariance are
+
+$$\hat{\sigma}_0^2 = \frac{v^{\mathsf{T}} P v}{r}, \qquad r = m - n, \qquad \Sigma_{\hat{x}} = \hat{\sigma}_0^2\, Q_{xx}, \qquad Q_{xx} = N^{-1},$$
+
+where $m$ is the number of observations, $n$ the number of unknowns, and $r$ the redundancy; $Q_{xx}$ is obtained by solving $N Q_{xx} = I$ rather than forming an explicit inverse.
+
+## Statistical testing and reliability
+
+The cofactor matrix of the residuals is $Q_{vv} = P^{-1} - A N^{-1} A^{\mathsf{T}}$, of which the solver forms only the diagonal. Overall model fit is assessed with the two-sided global chi-square test [@baarda1968; @koch1999]
+
+$$T = \frac{v^{\mathsf{T}} P v}{\sigma_0^2}, \qquad \text{accept if}\quad \chi^2_{\alpha/2,\,r} \le T \le \chi^2_{1-\alpha/2,\,r} ,$$
+
+evaluated against the a-priori $\sigma_0^2$. Individual blunders are screened by Baarda data snooping, using standardized residuals and per-observation redundancy numbers,
+
+$$w_i = \frac{v_i}{\sigma_0 \sqrt{(Q_{vv})_{ii}}}, \qquad r_i = (Q_{vv})_{ii}\, p_i, \qquad \sum_i r_i = r ,$$
+
+where $|w_i|$ is compared with $k_\alpha = \Phi^{-1}(1 - \alpha_{\text{local}}/2)$ and a user threshold (default $3$). Internal reliability is reported as the Minimal Detectable Bias and external reliability as the induced coordinate shift [@baarda1968; @teunissen2006],
+
+$$\mathrm{MDB}_i = (k_\alpha + k_\beta)\,\hat{\sigma}_0\,\frac{\sigma_i}{\sqrt{r_i}}, \qquad \delta x_i = Q_{xx}\,\big(p_i A_i^{\mathsf{T}}\big)\,\mathrm{MDB}_i ,$$
+
+with $k_\beta = \Phi^{-1}(\text{power})$; the reported external-reliability metric is $\max_j |(\delta x_i)_j|$ over the coordinate components. The required $\chi^2$ and standard-normal quantiles are obtained without SciPy: the chi-square cumulative and quantile functions use regularized incomplete-gamma routines (series expansion and continued fraction) [@press2007], and the standard-normal quantile is taken from the Python standard library.
+
+## Error ellipses and robust estimation
+
+For each point the $2\times2$ posterior covariance is eigendecomposed, $\Sigma_p = V \operatorname{diag}(\lambda_1, \lambda_2) V^{\mathsf{T}}$ with $\lambda_1 \ge \lambda_2$, giving the confidence-ellipse semi-axes and orientation
+
+$$a = k\sqrt{\lambda_1}, \qquad b = k\sqrt{\lambda_2}, \qquad k = \sqrt{\chi^2_{p,2}}, \qquad \theta = \operatorname{atan2}(v_E, v_N) ,$$
+
+where $(v_E, v_N)$ is the major eigenvector and $p$ the confidence level. Robust estimation wraps the solver in an outer iteratively reweighted least-squares (IRLS) loop [@huber1964; @yang1999; @yang2001; @ghilani2017] that rescales each weight by a factor $u(|w_i|)$:
+
+$$u_{\text{Hub}}(|w|) = \begin{cases} 1 & |w| \le c \\[2pt] c/|w| & |w| > c \end{cases}, \qquad u_{\text{Dan}}(|w|) = \begin{cases} 1 & |w| \le c \\[2pt] e^{-\left((|w|-c)/c\right)^2} & |w| > c \end{cases},$$
+
+$$u_{\text{IGG3}}(|w|) = \begin{cases} 1 & |w| \le k_0 \\[3pt] \dfrac{k_0}{|w|}\left(\dfrac{k_1 - |w|}{k_1 - k_0}\right)^{2} & k_0 < |w| < k_1 \\[6pt] 0 & |w| \ge k_1 \end{cases},$$
+
+so that $p_i \leftarrow p_i\, u(|w_i|)$. Reweighting uses the a-priori $\sigma_0$ to avoid the masking effect, in which a large blunder inflates $\hat{\sigma}_0$ and hides itself. An optional auto-datum routine applies minimal (inner) constraints with a full audit trail when a network is otherwise rank-deficient.
 
 # Example usage
 
