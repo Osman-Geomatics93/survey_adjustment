@@ -14,6 +14,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.4] - 2026-06-06
+
+### Added
+- Paper-build workflow (`Draft Paper PDF`) that compiles the JOSS paper with Open Journals' `inara`
+- Full equation-rich version of the paper, retained as `paper/paper-full.md`
+
+### Changed
+- Use the complete canonical GPL-2.0 license text so the license is auto-detected
+- Use the concise (~900-word) JOSS paper as `paper/paper.md`
+
+### Removed
+- AI-usage section from the paper
+
+---
+
 ## [1.0.3] - 2026-06-06
 
 ### Added
@@ -117,6 +132,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |:--------|:-----|:-----------|
+| 1.0.4 | 2026-06-06 | Full GPL text, JOSS paper finalized, paper-build CI |
 | 1.0.3 | 2026-06-06 | CI, automated tests, and JOSS paper |
 | 1.0.2 | 2026-01-23 | Bug fixes for 3D algorithms |
 | 1.0.1 | 2026-01-22 | Documentation and parsing improvements |
@@ -124,7 +140,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.4...HEAD
+[1.0.4]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.0...v1.0.1

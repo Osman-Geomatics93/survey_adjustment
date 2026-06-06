@@ -892,7 +892,7 @@ If you use this plugin in academic research, publications, or professional repor
   year         = {2026},
   month        = jun,
   publisher    = {GitHub},
-  version      = {1.0.3},
+  version      = {1.0.4},
   url          = {https://github.com/Osman-Geomatics93/survey_adjustment},
   note         = {Open-source QGIS plugin for geodetic network adjustment}
 }
@@ -903,7 +903,7 @@ If you use this plugin in academic research, publications, or professional repor
 <details>
 <summary><strong>APA 7th Edition</strong></summary>
 
-> Ibrahim, O. O. A. (2026). *Survey Adjustment & Network Analysis* (Version 1.0.3) [QGIS Plugin]. GitHub. https://github.com/Osman-Geomatics93/survey_adjustment
+> Ibrahim, O. O. A. (2026). *Survey Adjustment & Network Analysis* (Version 1.0.4) [QGIS Plugin]. GitHub. https://github.com/Osman-Geomatics93/survey_adjustment
 
 </details>
 
@@ -924,14 +924,14 @@ If you use this plugin in academic research, publications, or professional repor
 <details>
 <summary><strong>Harvard</strong></summary>
 
-> Ibrahim, O. O. A. (2026) *Survey Adjustment & Network Analysis* (Version 1.0.3). Available at: https://github.com/Osman-Geomatics93/survey_adjustment (Accessed: Date).
+> Ibrahim, O. O. A. (2026) *Survey Adjustment & Network Analysis* (Version 1.0.4). Available at: https://github.com/Osman-Geomatics93/survey_adjustment (Accessed: Date).
 
 </details>
 
 <details>
 <summary><strong>MLA 9th Edition</strong></summary>
 
-> Ibrahim, Osman Osama Ahmed. *Survey Adjustment & Network Analysis*. Version 1.0.3, GitHub, 2026, https://github.com/Osman-Geomatics93/survey_adjustment.
+> Ibrahim, Osman Osama Ahmed. *Survey Adjustment & Network Analysis*. Version 1.0.4, GitHub, 2026, https://github.com/Osman-Geomatics93/survey_adjustment.
 
 </details>
 
@@ -939,7 +939,7 @@ If you use this plugin in academic research, publications, or professional repor
 
 ```
 Ibrahim, Osman Osama Ahmed (2026). Survey Adjustment & Network Analysis: A QGIS Plugin
-for Least-Squares Adjustment of Survey Networks (Version 1.0.3).
+for Least-Squares Adjustment of Survey Networks (Version 1.0.4).
 GitHub. https://github.com/Osman-Geomatics93/survey_adjustment
 ```
 
