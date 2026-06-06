@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.5] - 2026-06-06
+
+### Changed
+- Maintenance release published to trigger Zenodo archival for the JOSS submission; no functional changes.
+
+---
+
 ## [1.0.4] - 2026-06-06
 
 ### Added
@@ -132,6 +139,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |:--------|:-----|:-----------|
+| 1.0.5 | 2026-06-06 | Maintenance release (Zenodo archival for JOSS) |
 | 1.0.4 | 2026-06-06 | Full GPL text, JOSS paper finalized, paper-build CI |
 | 1.0.3 | 2026-06-06 | CI, automated tests, and JOSS paper |
 | 1.0.2 | 2026-01-23 | Bug fixes for 3D algorithms |
@@ -140,7 +148,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.4...HEAD
+[Unreleased]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.5...HEAD
+[1.0.5]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.1...v1.0.2
