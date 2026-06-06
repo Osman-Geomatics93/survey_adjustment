@@ -111,5 +111,5 @@ An editor may cross-check dates, so reconcile these first:
    (optionally) open a couple of genuine tracking issues for the roadmap items. This
    converts "14 commits in two days" into a repository that visibly has releases and
    an issue tracker.
-3. **Keep claims truthful.** This statement only asserts things visible in the repo
-   plus whatever you fill into the [AUTHOR] blanks — keep it that way.
+3. **Keep claims truthful.** This statement asserts only things visible in the repo
+   and the author's own account of the project — keep it that way.
