@@ -14,7 +14,7 @@ Conventions:
 """
 
 __version__ = "1.0.0"
-__author__ = "Survey Adjustment Plugin"
+__author__ = "Osman Osama Ahmed Ibrahim"
 
 from .core.models import Point, Network, AdjustmentOptions
 from .core.models import (

@@ -9,7 +9,7 @@ tags:
   - GNSS
   - Python
 authors:
-  - name: Osman Ibrahim
+  - name: Osman Osama Ahmed Ibrahim
     orcid: 0009-0003-2594-6310
     corresponding: true
     affiliation: 1

@@ -8,7 +8,7 @@ message: >-
   please cite it using the metadata from this file.
 type: software
 authors:
-  - given-names: Osman
+  - given-names: Osman Osama Ahmed
     family-names: Ibrahim
     email: 422436@ogr.ktu.edu.tr
     affiliation: Karadeniz Technical University
@@ -39,7 +39,7 @@ date-released: "2026-01-23"
 preferred-citation:
   type: software
   authors:
-    - given-names: Osman
+    - given-names: Osman Osama Ahmed
       family-names: Ibrahim
   title: "Survey Adjustment & Network Analysis: A QGIS Plugin for Least-Squares Adjustment of Survey Networks"
   year: 2026
