@@ -1,0 +1,6 @@
+point_id,name,easting,northing,fixed_e,fixed_n,sigma_e,sigma_n
+A,Control Point A,1000.000,2000.000,true,true,0.0,0.0
+B,Station B,1500.000,2300.000,false,false,0.010,0.010
+C,Control Point C,2000.000,2000.000,true,true,0.0,0.0
+D,Station D,1500.000,1700.000,false,false,0.010,0.010
+E,Station E,1000.000,1700.000,false,false,0.010,0.010

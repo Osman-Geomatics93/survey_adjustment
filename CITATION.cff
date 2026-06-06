@@ -12,7 +12,7 @@ authors:
     family-names: Ibrahim
     email: 422436@ogr.ktu.edu.tr
     affiliation: Karadeniz Technical University
-    orcid: ""
+    orcid: "https://orcid.org/0009-0003-2594-6310"
 repository-code: "https://github.com/Osman-Geomatics93/survey_adjustment"
 url: "https://github.com/Osman-Geomatics93/survey_adjustment"
 repository-artifact: "https://github.com/Osman-Geomatics93/survey_adjustment/releases"
