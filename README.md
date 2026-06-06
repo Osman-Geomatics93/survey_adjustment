@@ -12,6 +12,7 @@
   <a href="https://qgis.org/"><img src="https://img.shields.io/badge/QGIS-3.22%2B-34a853?style=for-the-badge&logo=qgis&logoColor=white" alt="QGIS 3.22+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv2+-blue?style=for-the-badge" alt="License: GPL v2+"></a>
   <a href="https://github.com/Osman-Geomatics93/survey_adjustment/releases"><img src="https://img.shields.io/github/v/release/Osman-Geomatics93/survey_adjustment?style=for-the-badge&color=orange" alt="GitHub Release"></a>
+  <a href="https://doi.org/10.5281/zenodo.20571215"><img src="https://zenodo.org/badge/1139466018.svg" alt="DOI"></a>
 </p>
 
 <p align="center">

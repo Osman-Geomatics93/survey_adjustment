@@ -36,6 +36,13 @@ keywords:
 license: GPL-2.0-or-later
 version: "1.0.5"
 date-released: "2026-06-06"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.20571215"
+    description: "Concept DOI (resolves to the latest version)"
+  - type: doi
+    value: "10.5281/zenodo.20571216"
+    description: "DOI for version 1.0.5"
 preferred-citation:
   type: software
   authors:
