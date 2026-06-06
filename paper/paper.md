@@ -16,6 +16,7 @@ authors:
 affiliations:
   - index: 1
     name: Karadeniz Technical University, Trabzon, Türkiye
+    ror: 03z8fyr40
 date: 6 June 2026
 bibliography: paper.bib
 ---
