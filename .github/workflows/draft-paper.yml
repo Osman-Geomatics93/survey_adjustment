@@ -1,0 +1,35 @@
+name: Draft Paper PDF
+
+# Builds the JOSS paper PDF with the official Open Journals tooling (inara)
+# and uploads it as a downloadable artifact. Lets you preview the compiled
+# paper.md — including citations and equations — without a local LaTeX/Docker setup.
+
+on:
+  push:
+    paths:
+      - 'paper/**'
+      - '.github/workflows/draft-paper.yml'
+  pull_request:
+    paths:
+      - 'paper/**'
+  workflow_dispatch:
+
+jobs:
+  paper:
+    name: Build draft PDF
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Build draft PDF
+        uses: openjournals/openjournals-draft-action@master
+        with:
+          journal: joss
+          paper-path: paper/paper.md
+
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper-pdf
+          path: paper/paper.pdf
