@@ -14,6 +14,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.3] - 2026-06-06
+
+### Added
+- Continuous integration (GitHub Actions) running the test suite on Python 3.10–3.12
+- Automated test suite (113 tests) and a `conftest.py` so the core is testable without QGIS
+- Software paper for the Journal of Open Source Software (`paper/paper.md`, `paper/paper.bib`)
+- Author ORCID in `CITATION.cff`
+
+### Changed
+- Use the full author name "Osman Osama Ahmed Ibrahim" across project metadata
+- Reconcile documented release dates to January 2026
+
+---
+
 ## [1.0.2] - 2026-01-23
 
 ### Fixed
@@ -103,13 +117,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |:--------|:-----|:-----------|
+| 1.0.3 | 2026-06-06 | CI, automated tests, and JOSS paper |
 | 1.0.2 | 2026-01-23 | Bug fixes for 3D algorithms |
 | 1.0.1 | 2026-01-22 | Documentation and parsing improvements |
 | 1.0.0 | 2026-01-22 | Initial release with full functionality |
 
 ---
 
-[Unreleased]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.2...HEAD
+[Unreleased]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.3...HEAD
+[1.0.3]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/Osman-Geomatics93/survey_adjustment/releases/tag/v1.0.0
