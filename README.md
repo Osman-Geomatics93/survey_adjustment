@@ -895,6 +895,7 @@ If you use this plugin in academic research, publications, or professional repor
   month        = jun,
   publisher    = {GitHub},
   version      = {1.0.6},
+  doi          = {10.5281/zenodo.20618443},
   url          = {https://github.com/Osman-Geomatics93/survey_adjustment},
   note         = {Open-source QGIS plugin for geodetic network adjustment}
 }
