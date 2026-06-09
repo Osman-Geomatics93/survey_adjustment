@@ -14,6 +14,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.6] - 2026-06-10
+
+### Added
+- Hosted documentation site built with MkDocs Material and deployed to GitHub Pages, covering installation, input formats, per-solver tutorials, the mathematical theory, and an API overview.
+- Development roadmap (`ROADMAP.md`) outlining iterative work toward a future JOSS submission.
+- `flake8` linting enforced in CI, configured via `setup.cfg`.
+
+### Changed
+- Expanded the JOSS paper with Software design, Research impact statement, and AI usage disclosure sections; added the Baarda (1968) DOI and the affiliation ROR identifier.
+- Internal code cleanup: removed unused imports and variables and resolved all flake8 findings. No functional changes.
+
+---
+
 ## [1.0.5] - 2026-06-06
 
 ### Changed
@@ -139,6 +152,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |:--------|:-----|:-----------|
+| 1.0.6 | 2026-06-10 | Documentation site, CI linting, paper & code-quality improvements |
 | 1.0.5 | 2026-06-06 | Maintenance release (Zenodo archival for JOSS) |
 | 1.0.4 | 2026-06-06 | Full GPL text, JOSS paper finalized, paper-build CI |
 | 1.0.3 | 2026-06-06 | CI, automated tests, and JOSS paper |
@@ -148,7 +162,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.5...HEAD
+[Unreleased]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.6...HEAD
+[1.0.6]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/Osman-Geomatics93/survey_adjustment/compare/v1.0.2...v1.0.3

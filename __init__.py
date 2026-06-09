@@ -13,7 +13,7 @@ Conventions:
 - Point IDs: String type to allow alphanumeric station names
 """
 
-__version__ = "1.0.5"
+__version__ = "1.0.6"
 __author__ = "Osman Osama Ahmed Ibrahim"
 
 from .core.models import Point, Network, AdjustmentOptions
