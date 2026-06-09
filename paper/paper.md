@@ -33,9 +33,13 @@ Rigorous least-squares network adjustment that is simultaneously free, open sour
 
 Mature commercial packages (MicroSurvey STAR\*NET, Sweco MOVE3, Trimble Business Center, Leica Infinity) are reliability-aware but paid, standalone, and not QGIS-integrated. GNU GaMa is a free, authoritative engine [@cepek2002] but is command-line and XML oriented and emits tables rather than spatial layers; within QGIS, the older `SurveyingCalculation` plugin wraps GaMa for QGIS 2.x via an external binary, and the more recent `QNET` is a GUI dialog rather than a scriptable Processing provider. This plugin was therefore built as a new, dependency-light Processing provider so that the adjustment, its diagnostics, and its spatial outputs live inside the QGIS data model and scripting surface where the target users already work.
 
+# Software design
+
+The plugin is organized as a UI-independent numerical core wrapped by a thin QGIS integration layer. The core — observation models, the Gauss–Newton solver, statistics, reliability analysis, and the JSON and HTML report writers — depends only on NumPy and imports nothing from QGIS, so it can be exercised and unit-tested as a plain Python library. The QGIS layer registers the five Processing algorithms, imports the QGIS API lazily, and converts inputs and outputs to and from the QGIS data model. Each solver (1D, 2D, 3D GNSS, and mixed) is a separate module sharing common linear-algebra and quality-control routines, which keeps the observation-specific code small and makes new observation types straightforward to add. The repository follows standard open-source practices: tagged releases, a `CITATION.cff`, contributing guidelines, a security policy, issue and pull-request templates, and committed example datasets whose expected outputs double as regression fixtures.
+
 # Implementation and methods
 
-A UI-independent, NumPy-only core (observation models, Gauss–Newton solver, statistics, reliability, and report writers) is wrapped by a thin QGIS layer that registers the Processing algorithms and imports QGIS lazily, so the core runs and can be tested without QGIS. SciPy is deliberately avoided: the chi-square distribution functions are implemented from regularized incomplete-gamma routines [@press2007], with the standard-normal quantile taken from the Python standard library.
+SciPy is deliberately avoided so the plugin installs cleanly in a stock QGIS: the chi-square distribution functions are implemented from regularized incomplete-gamma routines [@press2007], with the standard-normal quantile taken from the Python standard library.
 
 Each solver linearizes the observation equations about approximate parameters $x_0$ and minimizes $v^{\mathsf{T}} P v$, where $v = w - A\,\delta x$ is the residual vector, $w = l - f(x_0)$ the misclosure, $A$ the Jacobian, and $P = Q_{ll}^{-1}$ the weight matrix (diagonal $p_i = 1/\sigma_i^2$, with dense $3\times3$ blocks for GNSS baselines) [@ghilani2017; @koch1999]. This yields the normal equations and a-posteriori statistics
 
@@ -50,6 +54,14 @@ Internal reliability is reported as the Minimal Detectable Bias $\mathrm{MDB}_i 
 # Example usage
 
 The repository ships five worked datasets — 1D leveling, a 2D traverse, 2D trilateration, a 3D GNSS network, and a mixed network — each with committed JSON, HTML, and GeoPackage outputs under `examples/` that serve as both a walkthrough and validation fixtures. A user loads the input tables, runs the relevant algorithm from the Processing toolbox, and inspects the adjusted points, error ellipses, and residual diagnostics added to the map canvas. Installation and input formats are documented in the README, with contributing guidelines, a security policy, and issue and pull-request templates for the community.
+
+# Research impact statement
+
+The software is intended to support research and professional practice that depends on rigorously adjusted survey networks — deformation and monitoring studies, cadastral and engineering surveys, and geodetic teaching — by providing an inspectable, scriptable adjustment engine inside QGIS. Because the core is a NumPy-only library, it can be embedded in automated geospatial pipelines and reproducible-research workflows, and its JSON reports carry the full covariance matrix and a settings snapshot so that results can be independently re-derived and audited. The plugin has been used by the author in real surveying projects and in teaching; broader research adoption is an ongoing goal as the project continues to develop openly.
+
+# AI usage disclosure
+
+Generative-AI tools were used only to assist in drafting and copy-editing the text of this paper and its accompanying documentation. The software — its algorithms, numerical implementation, and validation — was developed by the author, and all AI-assisted text was reviewed and verified by the author.
 
 # Acknowledgements
 
