@@ -19,9 +19,9 @@ if TYPE_CHECKING:
 
 class ConstraintStatus(Enum):
     """Status of a constraint category."""
-    OK = "ok"           # Properly constrained
-    WARNING = "warning" # Marginal or suboptimal
-    ERROR = "error"     # Missing or insufficient
+    OK = "ok"            # Properly constrained
+    WARNING = "warning"  # Marginal or suboptimal
+    ERROR = "error"      # Missing or insufficient
 
 
 @dataclass
@@ -194,7 +194,10 @@ def _check_connectivity(network: "Network", point_ids: Set[str], obs_filter=None
         if obs_filter and not obs_filter(obs):
             continue
 
-        if isinstance(obs, (DistanceObservation, DirectionObservation, GnssBaselineObservation, HeightDifferenceObservation)):
+        if isinstance(obs, (
+            DistanceObservation, DirectionObservation,
+            GnssBaselineObservation, HeightDifferenceObservation,
+        )):
             if obs.from_point_id in adj and obs.to_point_id in adj:
                 adj[obs.from_point_id].add(obs.to_point_id)
                 adj[obs.to_point_id].add(obs.from_point_id)
@@ -247,14 +250,6 @@ def analyze_constraint_health(
     Returns:
         ConstraintHealth with detailed status and actionable messages
     """
-    from ..models.observation import (
-        DistanceObservation,
-        DirectionObservation,
-        AngleObservation,
-        HeightDifferenceObservation,
-        GnssBaselineObservation,
-    )
-
     health = ConstraintHealth()
 
     # Detect observation types
@@ -430,7 +425,8 @@ def _analyze_1d_constraints(
         health.connectivity_message = f"Disconnected points: {disconnected}"
         health.disconnected_points = disconnected
         health.errors.append(
-            f"Leveling network is disconnected: points {disconnected} have no height difference path to fixed benchmarks"
+            f"Leveling network is disconnected: points {disconnected} "
+            "have no height difference path to fixed benchmarks"
         )
     else:
         health.connectivity_status = ConstraintStatus.OK
@@ -538,7 +534,10 @@ def _analyze_mixed_constraints(
             )
         else:
             health.horizontal_status = ConstraintStatus.OK
-            health.horizontal_message = f"Fixed E: {health.fixed_easting_points}, Fixed N: {health.fixed_northing_points}"
+            health.horizontal_message = (
+                f"Fixed E: {health.fixed_easting_points}, "
+                f"Fixed N: {health.fixed_northing_points}"
+            )
     else:
         health.horizontal_status = ConstraintStatus.OK
         health.horizontal_message = "Not required (leveling only)"
@@ -726,8 +725,11 @@ def _calculate_mixed_dof(
     )
 
     # Count observations
-    num_classical = sum(1 for obs in network.observations
-                        if obs.enabled and isinstance(obs, (DistanceObservation, DirectionObservation, AngleObservation)))
+    num_classical = sum(
+        1 for obs in network.observations
+        if obs.enabled
+        and isinstance(obs, (DistanceObservation, DirectionObservation, AngleObservation))
+    )
     num_gnss = sum(1 for obs in network.observations
                    if obs.enabled and isinstance(obs, GnssBaselineObservation))
     num_leveling = sum(1 for obs in network.observations
@@ -795,11 +797,6 @@ def apply_minimal_constraints(
     Returns:
         List of AppliedConstraint records describing what was applied
     """
-    from ..models.observation import (
-        DistanceObservation, DirectionObservation, AngleObservation,
-        GnssBaselineObservation, HeightDifferenceObservation,
-    )
-
     applied: List[AppliedConstraint] = []
 
     # Detect observation types

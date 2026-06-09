@@ -402,7 +402,7 @@ class AdjustNetworkMixedAlgorithm(QgsProcessingAlgorithm):
         if not result.success:
             feedback.reportError(f"Adjustment failed: {result.error_message}")
         else:
-            feedback.pushInfo(f"Adjustment completed")
+            feedback.pushInfo("Adjustment completed")
             feedback.pushInfo(f"Converged: {result.converged} in {result.iterations} iterations")
             feedback.pushInfo(f"Degrees of freedom: {result.degrees_of_freedom}")
             feedback.pushInfo(f"Variance factor: {result.variance_factor:.6f}")
@@ -457,7 +457,6 @@ class AdjustNetworkMixedAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo("Creating adjusted points layer...")
         for point in result.adjusted_points.values():
             feat = QgsFeature(points_fields)
-            h = point.height if point.height is not None else 0.0
             geom = QgsGeometry.fromPointXY(QgsPointXY(point.easting, point.northing))
             feat.setGeometry(geom)
             feat.setAttributes([

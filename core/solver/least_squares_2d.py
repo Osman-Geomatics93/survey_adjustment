@@ -67,13 +67,11 @@ from .robust import (
     RobustMethod,
     get_weight_function,
     compute_robust_weights,
-    describe_method,
 )
 from ..validation import (
     analyze_constraint_health,
     apply_minimal_constraints,
 )
-
 
 
 def _network_span(points: Dict[str, Point]) -> float:
@@ -327,10 +325,12 @@ def adjust_network_2d(network: Network, options: AdjustmentOptions | None = None
             sigma_northing=sigma_n,
         )
 
-        if options.compute_error_ellipses and cov_matrix is not None and (pid, 'E') in index.coord_index and (pid, 'N') in index.coord_index:
+        if (
+            options.compute_error_ellipses and cov_matrix is not None
+            and (pid, 'E') in index.coord_index and (pid, 'N') in index.coord_index
+        ):
             ellipse = _compute_error_ellipse(pid, cov2, options.confidence_level)
             error_ellipses[pid] = ellipse
-
 
     # Standardized residuals, local test, and reliability measures
     std_residuals: Dict[str, float] = {}

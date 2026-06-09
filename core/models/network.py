@@ -13,7 +13,7 @@ It provides methods for:
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Optional, Set
+from typing import Dict, List, Any, Set
 from collections import defaultdict
 
 from .point import Point

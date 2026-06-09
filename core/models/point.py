@@ -8,7 +8,7 @@ Conventions:
 - Point IDs: String type to allow alphanumeric station names
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
 

@@ -5,7 +5,7 @@ This module defines configuration options for the least-squares adjustment,
 including iteration control, statistical parameters, and optional features.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional, Dict, Any
 from enum import Enum
 

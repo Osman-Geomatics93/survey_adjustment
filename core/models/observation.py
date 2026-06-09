@@ -19,9 +19,9 @@ Observation Types:
 import math
 import uuid
 from abc import ABC
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 
 
 class ObservationType(Enum):
@@ -367,7 +367,10 @@ class AngleObservation(Observation):
         return math.degrees(self.value)
 
     def __repr__(self) -> str:
-        return f"AngleObs({self.id}: {self.from_point_id}-{self.at_point_id}-{self.to_point_id}, {self.value_degrees:.4f}deg)"
+        return (
+            f"AngleObs({self.id}: {self.from_point_id}-{self.at_point_id}-{self.to_point_id}, "
+            f"{self.value_degrees:.4f}deg)"
+        )
 
 
 @dataclass

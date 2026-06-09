@@ -172,4 +172,3 @@ class ValidateNetworkAlgorithm(QgsProcessingAlgorithm):
             json.dump(report, f, indent=2)
 
         return {self.OUTPUT_JSON: out_json}
-

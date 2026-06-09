@@ -17,7 +17,7 @@ tested and re-used in non-QGIS contexts.
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 try:
     import numpy as np
@@ -149,7 +149,7 @@ def adjust_leveling_1d(
 
     # Build design matrix A, weight matrix P (diagonal), and misclosure vector l
     A = np.zeros((m, n), dtype=float)
-    l = np.zeros(m, dtype=float)  # Misclosure (observed - approximate)
+    l = np.zeros(m, dtype=float)  # noqa: E741 -- misclosure (observed - approximate)
     sigmas = np.zeros(m, dtype=float)
 
     # Current heights (initial approximations)

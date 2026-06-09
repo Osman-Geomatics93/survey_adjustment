@@ -56,7 +56,6 @@ from ..results.adjustment_result import (
 )
 from ..statistics import (
     chi_square_global_test,
-    standardized_residuals,
     local_outlier_threshold,
     normal_ppf,
     chi2_ppf,
@@ -475,8 +474,10 @@ def adjust_network_mixed(
             for i, P_block in enumerate(gnss_weight_blocks):
                 row_base = m_classical + 3 * i
                 v_g = residuals_tmp[row_base:row_base+3]
-                vTPv_tmp += float(v_g @ P_block @ v_g) * robust_weights_gnss[i] - \
-                           float((v_g * v_g * np.diag(P_block)).sum()) * robust_weights_gnss[i]
+                vTPv_tmp += (
+                    float(v_g @ P_block @ v_g) * robust_weights_gnss[i]
+                    - float((v_g * v_g * np.diag(P_block)).sum()) * robust_weights_gnss[i]
+                )
 
             # Use a-priori sigma0 for IRLS to avoid masking effect where outliers
             # inflate the a-posteriori sigma0 and prevent their own detection
@@ -532,7 +533,9 @@ def adjust_network_mixed(
                     std_res_tmp[row_base + 2] = residuals_tmp[row_base + 2] / (math.sqrt(C[2, 2]) * sigma0_tmp)
                 if m_leveling > 0:
                     row_start = m_classical + m_gnss
-                    std_res_tmp[row_start:row_start + m_leveling] = residuals_tmp[row_start:row_start + m_leveling] / (sigmas_l_tmp * sigma0_tmp)
+                    std_res_tmp[row_start:row_start + m_leveling] = (
+                        residuals_tmp[row_start:row_start + m_leveling] / (sigmas_l_tmp * sigma0_tmp)
+                    )
 
             # Update robust weights
             max_weight_change = 0.0
@@ -1224,8 +1227,9 @@ def _set_A_coord(A: np.ndarray, row: int, index: MixedParameterIndex,
         A[row, index.coord_index[(point_id, 'N')]] += float(dN)
 
 
-def _apply_corrections_mixed(state: _State, index: MixedParameterIndex,
-                              dx: np.ndarray) -> None:
+def _apply_corrections_mixed(
+    state: _State, index: MixedParameterIndex, dx: np.ndarray
+) -> None:
     """Apply corrections vector dx to the state."""
     for (pid, comp), j in index.coord_index.items():
         e, n, h = state.points[pid]

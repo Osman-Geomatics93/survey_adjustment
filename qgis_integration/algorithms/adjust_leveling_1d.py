@@ -282,7 +282,7 @@ class AdjustLeveling1DAlgorithm(QgsProcessingAlgorithm):
         if not result.success:
             feedback.reportError(f"Adjustment failed: {result.error_message}")
         else:
-            feedback.pushInfo(f"Adjustment completed")
+            feedback.pushInfo("Adjustment completed")
             feedback.pushInfo(f"Degrees of freedom: {result.degrees_of_freedom}")
             feedback.pushInfo(f"Variance factor: {result.variance_factor:.6f}")
 
@@ -341,7 +341,11 @@ class AdjustLeveling1DAlgorithm(QgsProcessingAlgorithm):
             # Safe value extraction
             redund = res_info.redundancy_number if res_info.redundancy_number else None
             mdb = res_info.mdb if res_info.mdb and math.isfinite(res_info.mdb) else None
-            ext_rel = res_info.external_reliability if res_info.external_reliability and math.isfinite(res_info.external_reliability) else None
+            ext_rel = (
+                res_info.external_reliability
+                if res_info.external_reliability and math.isfinite(res_info.external_reliability)
+                else None
+            )
 
             feat.setAttributes([
                 res_info.obs_id,

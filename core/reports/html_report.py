@@ -7,10 +7,8 @@ from __future__ import annotations
 
 import html
 import math
-from dataclasses import asdict
-from typing import Optional
 
-from ..results.adjustment_result import AdjustmentResult, ResidualInfo, ErrorEllipse
+from ..results.adjustment_result import AdjustmentResult
 
 
 def _is_leveling_result(result: AdjustmentResult) -> bool:

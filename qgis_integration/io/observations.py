@@ -19,9 +19,8 @@ from __future__ import annotations
 
 import csv
 import math
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, List, Sequence
 
 from ...core.models.point import Point
 from ...core.models.observation import (

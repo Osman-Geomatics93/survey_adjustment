@@ -48,11 +48,6 @@ from ..results.adjustment_result import (
 from ..statistics import (
     chi_square_global_test,
     local_outlier_threshold,
-    normal_ppf,
-)
-from ..statistics.reliability import (
-    redundancy_numbers,
-    mdb_values,
 )
 from ..validation import (
     analyze_constraint_health,
@@ -186,7 +181,7 @@ def adjust_gnss_3d(
     # Build design matrix A, weight blocks, and misclosure vector l
     # Using whitening approach: pre-multiply by L^T where P = L^T @ L (Cholesky of weight)
     A = np.zeros((m, n), dtype=float)
-    l = np.zeros(m, dtype=float)
+    l = np.zeros(m, dtype=float)  # noqa: E741 -- misclosure vector (geodetic convention)
 
     # Store covariance blocks for later use (for qvv computation)
     cov_blocks: List[np.ndarray] = []
@@ -391,8 +386,6 @@ def adjust_gnss_3d(
         variance_factor = 1.0
         sigma0_sq = options.a_priori_variance
 
-    sigma0_hat = math.sqrt(max(sigma0_sq, 1e-30))
-
     # Covariance matrix of unknowns
     Qxx: Optional[np.ndarray] = None
     cov_matrix: Optional[np.ndarray] = None
@@ -457,8 +450,6 @@ def adjust_gnss_3d(
     qvv_diag: Optional[np.ndarray] = None
     std_vals = np.zeros(m, dtype=float)
 
-    sigma0_for_w = math.sqrt(max(options.a_priori_variance, 1e-30))
-
     if dof > 0 and Qxx is not None:
         # Build Qll diagonal (covariance diagonal of observations)
         Qll_diag = np.zeros(m, dtype=float)
@@ -487,7 +478,6 @@ def adjust_gnss_3d(
 
     # Local test threshold
     k_alpha = local_outlier_threshold(options.alpha_local)
-    k_beta = normal_ppf(options.mdb_power)
 
     # Build residual details - one per baseline with component info
     std_residuals: Dict[str, float] = {}

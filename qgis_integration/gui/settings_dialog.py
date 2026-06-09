@@ -18,10 +18,8 @@ from qgis.PyQt.QtWidgets import (
     QPushButton,
     QTabWidget,
     QWidget,
-    QGroupBox,
     QLabel,
 )
-from qgis.PyQt.QtCore import Qt
 
 from ..settings import PluginSettings
 

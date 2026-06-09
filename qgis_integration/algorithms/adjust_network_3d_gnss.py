@@ -7,7 +7,6 @@ via guarded imports, but execution requires QGIS.
 from __future__ import annotations
 
 import json
-import math
 from pathlib import Path
 
 try:  # pragma: no cover
@@ -305,7 +304,7 @@ class AdjustNetwork3DGnssAlgorithm(QgsProcessingAlgorithm):
         if not result.success:
             feedback.reportError(f"Adjustment failed: {result.error_message}")
         else:
-            feedback.pushInfo(f"Adjustment completed")
+            feedback.pushInfo("Adjustment completed")
             feedback.pushInfo(f"Degrees of freedom: {result.degrees_of_freedom}")
             feedback.pushInfo(f"Variance factor: {result.variance_factor:.6f}")
 
@@ -353,7 +352,6 @@ class AdjustNetwork3DGnssAlgorithm(QgsProcessingAlgorithm):
         for point in result.adjusted_points.values():
             feat = QgsFeature(points_fields)
             # Create PointZ geometry
-            h = point.height if point.height is not None else 0.0
             geom = QgsGeometry.fromPointXY(QgsPointXY(point.easting, point.northing))
             # Add Z value if possible (may need different approach for PointZ)
             feat.setGeometry(geom)
