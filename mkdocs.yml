@@ -1,0 +1,80 @@
+site_name: Survey Adjustment & Network Analysis
+site_description: >-
+  Documentation for the Survey Adjustment & Network Analysis QGIS plugin —
+  least-squares adjustment of 1D, 2D, 3D GNSS, and mixed survey networks.
+site_author: Osman Osama Ahmed Ibrahim
+site_url: https://osman-geomatics93.github.io/survey_adjustment/
+
+repo_name: Osman-Geomatics93/survey_adjustment
+repo_url: https://github.com/Osman-Geomatics93/survey_adjustment
+edit_uri: edit/master/docs/
+
+copyright: Copyright &copy; 2026 Osman Osama Ahmed Ibrahim — GPL-2.0-or-later
+
+theme:
+  name: material
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: green
+      accent: green
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: green
+      accent: green
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+    - search.highlight
+    - toc.follow
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Input formats: input-formats.md
+  - Tutorials:
+      - 2D classical network: tutorials/2d-network.md
+      - 1D leveling: tutorials/1d-leveling.md
+      - 3D GNSS baselines: tutorials/3d-gnss.md
+      - Mixed network: tutorials/mixed.md
+  - Theory & quality control: theory.md
+  - API reference: api.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.details
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Osman-Geomatics93/survey_adjustment

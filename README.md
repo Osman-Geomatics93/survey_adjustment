@@ -23,6 +23,7 @@
 </p>
 
 <p align="center">
+  <a href="https://osman-geomatics93.github.io/survey_adjustment/"><strong>Documentation</strong></a> •
   <a href="#features">Features</a> •
   <a href="#video-tutorials">Tutorials</a> •
   <a href="#sample-data--examples">Examples</a> •

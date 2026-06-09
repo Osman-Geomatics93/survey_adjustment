@@ -25,3 +25,7 @@ Thumbs.db
 # QGIS
 *.qgs~
 *.qgz~
+
+# MkDocs build output
+site/
+_site_test/
