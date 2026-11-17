@@ -104,7 +104,7 @@ registers the Processing algorithms, imports the QGIS API lazily, and converts
 between QGIS data structures and core objects. Four design decisions shape the
 software:
 
-1. **QGIS-free core.** Because the core imports nothing from QGIS, its 113
+1. **QGIS-free core.** Because the core imports nothing from QGIS, its 200
    automated tests run in continuous integration on Python 3.9–3.12 without a
    QGIS installation, and the same solvers can be called from notebooks or
    servers.
@@ -137,12 +137,16 @@ with redundancy $r = m - n$. From the residual cofactor matrix
 $Q_{vv} = P^{-1} - A N^{-1} A^{\mathsf{T}}$ the plugin computes the two-sided
 chi-square global test, standardized residuals
 $w_i = v_i / (\sigma_0 \sqrt{(Q_{vv})_{ii}})$ for data snooping, redundancy
-numbers $r_i = (Q_{vv})_{ii}\, p_i$ [@baarda1968], the minimal detectable bias
+numbers $r_i = (Q_{vv} P)_{ii}$ [@baarda1968], the minimal detectable bias
 $\mathrm{MDB}_i = (k_\alpha + k_\beta)\,\hat{\sigma}_0\,\sigma_i / \sqrt{r_i}$,
 and its effect on the coordinates (external reliability) [@teunissen2006]. Error
 ellipses follow from the eigen-decomposition of each point's $2\times2$
-covariance. Robust IRLS rescales weights by $u(|w_i|)$ in an outer loop, using
-the a-priori $\sigma_0$ to avoid masking by the outliers being sought.
+covariance. Robust IRLS rescales weights by $u(|w_i|)$ in an outer loop. Its
+standardized residuals use the a-priori $\sigma_0$ and the cofactors of the
+ordinary least-squares solution, so an outlier can neither mask itself nor
+regain full weight once down-weighted, and the redescending Danish and IGG-III
+functions start from a converged Huber solution, so that a gross error smeared
+over many residuals does not cause good observations to be rejected.
 
 # Validation and example usage
 
@@ -210,7 +214,10 @@ development of the software: [model version(s), e.g. "Claude Opus 4.5"] assisted
 with [scope, e.g. "implementing parts of the solvers and QGIS integration
 layer, writing unit tests, and drafting the README and documentation"]. Claude
 Opus 5.5 was used to restructure and copy-edit this paper, to generate the
-figure script, and to identify and fix a Python 3.9 compatibility issue. The
+figure script, to write test suites for the 1D, 3D, mixed, and robust solvers,
+and to diagnose and fix the defects those tests revealed (Python 3.9
+compatibility, inconsistent scaling of standardized residuals, and
+non-converging robust estimation). The
 author chose the adjustment models, algorithms, and software architecture,
 reviewed and edited all AI-assisted code and text, and verified correctness
 against the automated test suite and the worked examples.
