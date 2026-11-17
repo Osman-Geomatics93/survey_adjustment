@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.1] - 2026-11-17
+
+### Fixed
+- Exceptions were silently swallowed when unloading the plugin and when an error-ellipse polygon could not be built; they are now logged, or reported as a Processing warning. The QGIS plugin repository's Bandit scan blocked v1.1.0 because of these four findings (#29).
+
+### Added
+- Bandit security scan in CI, matching the check run by plugins.qgis.org (#29).
+
+---
+
 ## [1.1.0] - 2026-11-17
 
 ### Added

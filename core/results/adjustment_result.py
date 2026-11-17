@@ -282,7 +282,7 @@ class AdjustmentResult:
 
     # Metadata
     timestamp: Optional[str] = None
-    plugin_version: str = "1.1.0"
+    plugin_version: str = "1.1.1"
     network_name: str = ""
 
     # Robust estimation (Phase 7A)
