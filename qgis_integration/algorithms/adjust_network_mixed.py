@@ -494,7 +494,8 @@ class AdjustNetworkMixedAlgorithm(QgsProcessingAlgorithm):
                 )
                 qgs_pts = [QgsPointXY(e, n) for e, n in poly_pts]
                 feat.setGeometry(QgsGeometry.fromPolygonXY([qgs_pts]))
-            except Exception:
+            except Exception as exc:
+                feedback.pushWarning(f"Skipped the error ellipse of point {pid}: {exc}")
                 continue
 
             feat.setAttributes([
