@@ -445,36 +445,33 @@ def adjust_gnss_3d(
             sigma_height=sigma_h,
         )
 
-    # Compute qvv diagonal for standardized residuals
-    # diag(Qvv) = diag(P^-1) - diag(A Qxx A^T)
+    # Residual cofactor blocks: Qvv_i = C_i - A_i Qxx A_i^T (3x3 per baseline)
     qvv_diag: Optional[np.ndarray] = None
+    qvv_blocks: List[np.ndarray] = []
     std_vals = np.zeros(m, dtype=float)
 
+    # Use a-priori sigma0 (as the other solvers do) so the local test is not
+    # masked by outliers inflating the a-posteriori sigma0.
+    sigma0_for_w = math.sqrt(max(options.a_priori_variance, 1e-30))
+
     if dof > 0 and Qxx is not None:
-        # Build Qll diagonal (covariance diagonal of observations)
-        Qll_diag = np.zeros(m, dtype=float)
-        for i, C in enumerate(cov_blocks):
-            row_base = 3 * i
-            Qll_diag[row_base + 0] = C[0, 0]
-            Qll_diag[row_base + 1] = C[1, 1]
-            Qll_diag[row_base + 2] = C[2, 2]
-
-        # Compute diag(A Qxx A^T) efficiently
         B = A @ Qxx
-        diag_AQAt = (B * A).sum(axis=1)
+        for i, C in enumerate(cov_blocks):
+            rows = slice(3 * i, 3 * i + 3)
+            qvv_blocks.append(C - B[rows] @ A[rows].T)
 
-        qvv_diag = Qll_diag - diag_AQAt
+        qvv_diag = np.concatenate([np.diag(q) for q in qvv_blocks])
         qvv_diag = np.maximum(qvv_diag, 1e-30)
 
         # Standardized residuals
-        std_vals = residuals / np.sqrt(qvv_diag * sigma0_sq_post)
+        std_vals = residuals / (sigma0_for_w * np.sqrt(qvv_diag))
     else:
         # Fallback: normalize by observation sigma only
         for i, C in enumerate(cov_blocks):
             row_base = 3 * i
-            std_vals[row_base + 0] = residuals[row_base + 0] / math.sqrt(C[0, 0])
-            std_vals[row_base + 1] = residuals[row_base + 1] / math.sqrt(C[1, 1])
-            std_vals[row_base + 2] = residuals[row_base + 2] / math.sqrt(C[2, 2])
+            std_vals[row_base + 0] = residuals[row_base + 0] / (sigma0_for_w * math.sqrt(C[0, 0]))
+            std_vals[row_base + 1] = residuals[row_base + 1] / (sigma0_for_w * math.sqrt(C[1, 1]))
+            std_vals[row_base + 2] = residuals[row_base + 2] / (sigma0_for_w * math.sqrt(C[2, 2]))
 
     # Local test threshold
     k_alpha = local_outlier_threshold(options.alpha_local)
@@ -500,13 +497,11 @@ def adjust_gnss_3d(
         # Maximum standardized residual (for outlier detection)
         w_max = max(abs(wE), abs(wN), abs(wH))
 
-        # Redundancy numbers for this baseline
+        # Redundancy numbers for this baseline: diag(Qvv_i P_i). Using the full
+        # 3x3 blocks keeps sum(r) = dof when the components are correlated.
         r_E = r_N = r_H = None
-        if qvv_diag is not None:
-            P_block = weight_blocks[i]
-            r_E = qvv_diag[row_base + 0] * P_block[0, 0]
-            r_N = qvv_diag[row_base + 1] * P_block[1, 1]
-            r_H = qvv_diag[row_base + 2] * P_block[2, 2]
+        if qvv_blocks:
+            r_E, r_N, r_H = np.diag(qvv_blocks[i] @ weight_blocks[i])
 
         # Average redundancy for baseline
         r_avg = None

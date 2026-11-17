@@ -117,6 +117,13 @@ class TestExactMixedNetwork:
         result = adjust_network_mixed(mixed_network)
         assert result.degrees_of_freedom == 17 - 8
 
+    def test_redundancy_numbers_sum_to_degrees_of_freedom(self, mixed_network):
+        """A GNSS baseline reports the mean of its three (correlated) components."""
+        result = adjust_network_mixed(mixed_network)
+        total = sum(3 * r.redundancy_number if r.obs_type == "gnss_baseline" else r.redundancy_number
+                    for r in result.residual_details)
+        assert total == pytest.approx(result.degrees_of_freedom, abs=1e-9)
+
     def test_every_observation_reported(self, mixed_network):
         result = adjust_network_mixed(mixed_network)
         reported = {r.obs_id for r in result.residual_details}

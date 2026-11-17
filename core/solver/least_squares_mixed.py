@@ -820,6 +820,13 @@ def adjust_network_mixed(
     if options.compute_reliability and Qxx is not None and qvv_diag is not None and dof > 0:
         r_vals = redundancy_numbers(qvv_diag, Pdiag)
 
+        # GNSS rows: diag(Qvv_i P_i) from the full 3x3 blocks, so that sum(r) = dof
+        # also holds for correlated baseline components.
+        for i, (C, P_block) in enumerate(zip(gnss_cov_blocks, gnss_weight_blocks)):
+            rows = slice(m_classical + 3 * i, m_classical + 3 * i + 3)
+            qvv_block = C - B[rows] @ A_fin[rows].T
+            r_vals[rows] = np.diag(qvv_block @ (P_block * robust_weights_gnss[i]))
+
         # Build sigma array for MDB (use observation sigmas for all types)
         sigmas_all = np.zeros(m, dtype=float)
         if m_classical > 0:
@@ -844,7 +851,7 @@ def adjust_network_mixed(
         comp_val = computed_fin[j]
 
         # Compute standardized residual with safeguard against division by zero
-        qvv_var = qvv_diag[j] * sigma0_sq_post if qvv_diag is not None else 0.0
+        qvv_var = qvv_diag[j] * sigma0_for_w ** 2 if qvv_diag is not None else 0.0
         if qvv_var > 1e-30:
             std = res / math.sqrt(qvv_var)
         elif sigmas_fin[j] * sigma0_hat > 1e-30:
@@ -895,7 +902,7 @@ def adjust_network_mixed(
         # Standardized residuals for each component with safeguard against division by zero
         C = gnss_cov_blocks[i]
 
-        qvv_E = qvv_diag[row_base + 0] * sigma0_sq_post if qvv_diag is not None else 0.0
+        qvv_E = qvv_diag[row_base + 0] * sigma0_for_w ** 2 if qvv_diag is not None else 0.0
         if qvv_E > 1e-30:
             wE = vE / math.sqrt(qvv_E)
         elif C[0, 0] * sigma0_sq_post > 1e-30:
@@ -903,7 +910,7 @@ def adjust_network_mixed(
         else:
             wE = 0.0
 
-        qvv_N = qvv_diag[row_base + 1] * sigma0_sq_post if qvv_diag is not None else 0.0
+        qvv_N = qvv_diag[row_base + 1] * sigma0_for_w ** 2 if qvv_diag is not None else 0.0
         if qvv_N > 1e-30:
             wN = vN / math.sqrt(qvv_N)
         elif C[1, 1] * sigma0_sq_post > 1e-30:
@@ -911,7 +918,7 @@ def adjust_network_mixed(
         else:
             wN = 0.0
 
-        qvv_H = qvv_diag[row_base + 2] * sigma0_sq_post if qvv_diag is not None else 0.0
+        qvv_H = qvv_diag[row_base + 2] * sigma0_for_w ** 2 if qvv_diag is not None else 0.0
         if qvv_H > 1e-30:
             wH = vH / math.sqrt(qvv_H)
         elif C[2, 2] * sigma0_sq_post > 1e-30:
@@ -974,7 +981,7 @@ def adjust_network_mixed(
         comp_val = computed_lev_fin[j]
 
         # Compute standardized residual with safeguard against division by zero
-        qvv_var = qvv_diag[row_idx] * sigma0_sq_post if qvv_diag is not None else 0.0
+        qvv_var = qvv_diag[row_idx] * sigma0_for_w ** 2 if qvv_diag is not None else 0.0
         if qvv_var > 1e-30:
             std = res / math.sqrt(qvv_var)
         elif sigmas_lev_fin[j] * sigma0_hat > 1e-30:

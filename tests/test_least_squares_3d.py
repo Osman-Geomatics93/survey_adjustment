@@ -14,7 +14,9 @@ import pytest
 from survey_adjustment.core.models.point import Point
 from survey_adjustment.core.models.observation import GnssBaselineObservation
 from survey_adjustment.core.models.network import Network
+from survey_adjustment.core.models.options import AdjustmentOptions
 from survey_adjustment.core.solver.least_squares_3d import adjust_gnss_3d
+from survey_adjustment.core.solver.least_squares_mixed import adjust_network_mixed
 
 
 def _fixed(pid, e, n, h):
@@ -101,6 +103,26 @@ class TestTwoBaselineIntersection:
         np.testing.assert_allclose(_xyz(result.adjusted_points["P1"]), self.P1, atol=1e-12)
         np.testing.assert_allclose(_xyz(result.adjusted_points["P2"]), self.P2, atol=1e-12)
 
+    def test_redundancy_numbers_sum_to_dof_with_correlations(self, network):
+        """The per-baseline value is the mean of its three component numbers."""
+        result = adjust_gnss_3d(network)
+        total = sum(3 * r.redundancy_number for r in result.residual_details)
+        assert total == pytest.approx(result.degrees_of_freedom, abs=1e-9)
+
+    def test_standardized_residuals_use_a_priori_sigma0(self, network):
+        """w = v / (sigma0 * sqrt(qvv)): quadrupling sigma0^2 halves w."""
+        base = adjust_gnss_3d(network)
+        scaled = adjust_gnss_3d(network, AdjustmentOptions(a_priori_variance=4.0))
+        for b, s in zip(base.residual_details, scaled.residual_details):
+            assert s.standardized_residual == pytest.approx(b.standardized_residual / 2, rel=1e-9)
+
+    def test_standardized_residuals_match_mixed_solver(self, network):
+        dedicated = adjust_gnss_3d(network)
+        mixed = adjust_network_mixed(network)
+        w_mixed = {r.obs_id: r.standardized_residual for r in mixed.residual_details}
+        for r in dedicated.residual_details:
+            assert r.standardized_residual == pytest.approx(w_mixed[r.obs_id], rel=1e-8)
+
 
 class TestExactNetwork:
     """Exact baselines reproduce the true coordinates from poor approximations."""
@@ -131,10 +153,12 @@ class TestExactNetwork:
         for pid, xyz in self.TRUTH.items():
             np.testing.assert_allclose(_xyz(result.adjusted_points[pid]), xyz, atol=1e-8)
 
+    @pytest.mark.filterwarnings("error::RuntimeWarning")
     def test_residuals_vanish(self, network):
         result = adjust_gnss_3d(network)
         for r in result.residual_details:
             assert r.residual == pytest.approx(0.0, abs=1e-8)
+            assert np.isfinite(r.standardized_residual)
 
     def test_degrees_of_freedom(self, network):
         result = adjust_gnss_3d(network)
