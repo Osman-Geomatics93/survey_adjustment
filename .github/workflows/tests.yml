@@ -14,8 +14,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Core uses PEP 604 (`X | None`) union syntax, which requires Python >= 3.10.
-        python-version: ["3.10", "3.11", "3.12"]
+        # 3.9 is the Python bundled with QGIS 3.22/3.28 LTR (qgisMinimumVersion=3.22);
+        # modules using PEP 604 (`X | None`) annotations need `from __future__ import annotations`.
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
 
     steps:
       - name: Check out repository
