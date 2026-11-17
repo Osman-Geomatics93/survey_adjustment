@@ -21,7 +21,7 @@ Please **do not** report security vulnerabilities through public GitHub issues, 
 
 Send a detailed report to:
 
-**Email:** [422436@ogr.ktu.edu.tr](mailto:422436@ogr.ktu.edu.tr)
+**Email:** [osmangeomatics93@gmail.com](mailto:osmangeomatics93@gmail.com)
 
 **Subject Line:** `[SECURITY] Survey Adjustment Plugin Vulnerability Report`
 
