@@ -34,15 +34,12 @@ keywords:
   - error ellipse
   - robust estimation
 license: GPL-2.0-or-later
-version: "1.1.0"
+version: "1.1.1"
 date-released: "2026-11-17"
 identifiers:
   - type: doi
     value: "10.5281/zenodo.20571215"
     description: "Concept DOI (resolves to the latest version)"
-  - type: doi
-    value: "10.5281/zenodo.24324641"
-    description: "DOI for version 1.1.0"
 preferred-citation:
   type: software
   authors:
@@ -51,6 +48,6 @@ preferred-citation:
   title: "Survey Adjustment & Network Analysis: A QGIS Plugin for Least-Squares Adjustment of Survey Networks"
   year: 2026
   url: "https://github.com/Osman-Geomatics93/survey_adjustment"
-  version: "1.1.0"
+  version: "1.1.1"
   doi: "10.5281/zenodo.20571215"
   repository-code: "https://github.com/Osman-Geomatics93/survey_adjustment"
