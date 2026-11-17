@@ -80,7 +80,7 @@ a snapshot of the settings used.
 | GNU GaMa [@cepek2002] | Open source | None (command line, XML) | Tabular reports |
 | `SurveyingCalculation` plugin | Open source | Wraps a GaMa binary; QGIS 2.x | Layers |
 | `QNET` plugin | Open source | Dialog-based plugin | Layers |
-| **This work** | **Open source (GPL-2.0)** | **Processing provider, QGIS ≥ 3.22** | **GeoPackage layers + JSON/HTML** |
+| **This work** | **Open source (GPL-2.0)** | **Processing provider, QGIS 3.22+** | **GeoPackage layers + JSON/HTML** |
 
 Commercial packages are mature and reliability-aware but are licensed and
 stand-alone. GNU GaMa is the authoritative open-source adjustment engine, and we
@@ -96,7 +96,7 @@ in models, and testable.
 
 # Software design
 
-The code base (≈11,000 lines of Python) is split into a QGIS-independent
+The code base (about 11,000 lines of Python) is split into a QGIS-independent
 **core** and a thin **integration layer**. The core contains the observation and
 network models, the solvers, the statistics and reliability modules, a
 constraint-health validator, and the report writers. The integration layer
@@ -168,7 +168,7 @@ processing.run("survey_adjustment:adjust_network_2d", {
 
 ![Adjustment of the example 2D traverse (two fixed control points, three new
 points, 23 distance, direction, and angle observations). (a) Adjusted points and
-95 % error ellipses, drawn 5,000 times enlarged; labels give the semi-axes.
+95 % error ellipses, drawn 10,000 times enlarged; labels give the semi-axes.
 (b) Absolute standardized residuals used for data snooping; no observation
 exceeds the outlier threshold. Generated from the plugin's JSON report by
 `paper/make_figure.py`.\label{fig:traverse}](figure.png)

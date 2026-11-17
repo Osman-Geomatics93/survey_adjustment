@@ -19,8 +19,9 @@ ROOT = Path(__file__).resolve().parent.parent
 RESULT = ROOT / "examples" / "2d_traverse" / "Result" / "Adjustment_Result.json"
 OUTPUT = ROOT / "paper" / "figure.png"
 
-ELLIPSE_SCALE = 5000          # exaggeration factor for drawing the ellipses
+ELLIPSE_SCALE = 10000         # exaggeration factor for drawing the ellipses
 CHI2_2DOF_95 = 5.991464547    # chi-square quantile, 2 degrees of freedom, 95 %
+TIMES = "×"              # multiplication sign
 
 INK = "#0b0b0b"
 INK_2 = "#52514e"
@@ -35,7 +36,7 @@ TYPE_STYLE = {                # colour + marker, so type is never colour-alone
 
 plt.rcParams.update({
     "font.family": "DejaVu Sans",
-    "font.size": 8.5,
+    "font.size": 9,
     "axes.edgecolor": INK_2,
     "axes.labelcolor": INK,
     "xtick.color": INK_2,
@@ -50,7 +51,7 @@ residuals = data["residuals"]
 threshold = data["metadata"]["settings_snapshot"]["outlier_threshold"]
 
 fig, (ax_map, ax_res) = plt.subplots(
-    1, 2, figsize=(7.2, 3.3), gridspec_kw={"width_ratios": [1.05, 1]}
+    1, 2, figsize=(7.2, 3.4), gridspec_kw={"width_ratios": [1.3, 1]}
 )
 
 # (a) Network, adjusted points and 95 % error ellipses ----------------------
@@ -85,39 +86,39 @@ for pid, p in points.items():
     dx, dn = p["easting"] - centre_e, p["northing"] - centre_n
     if fixed:
         offset, ha, va = (0, -10), "center", "top"
+    elif dn > abs(dx):
+        offset, ha, va = (0, 14), "center", "bottom"
     elif dx < 0:
-        offset, ha, va = (-11, 0), "right", "center"
+        offset, ha, va = (-14, 0), "right", "center"
     else:
-        offset, ha, va = (11, 0), "left", "center"
-    ax_map.annotate(pid, (p["easting"], p["northing"]), xytext=offset,
-                    textcoords="offset points", ha=ha, va=va, fontsize=8,
-                    color=INK, fontweight="bold")
+        offset, ha, va = (14, 0), "left", "center"
+    label = pid
     if "ellipse_mm" in p:
-        ax_map.annotate("{:.1f} × {:.1f} mm".format(*p["ellipse_mm"]),
-                        (p["easting"], p["northing"]),
-                        xytext=(offset[0], offset[1] + (10 if dn > abs(dx) else -10)),
-                        textcoords="offset points", ha=ha, va=va, fontsize=6.5,
-                        color=INK_2)
+        mm = f"{p['ellipse_mm'][0]:.1f} {TIMES} {p['ellipse_mm'][1]:.1f} mm"
+        label = f"{pid}\n{mm}" if va != "bottom" else f"{mm}\n{pid}"
+    ax_map.annotate(label, (p["easting"], p["northing"]), xytext=offset,
+                    textcoords="offset points", ha=ha, va=va, fontsize=8,
+                    color=INK, linespacing=1.3)
 
 ax_map.set_aspect("equal")
-ax_map.set_xlim(840, 1660)
-ax_map.set_ylim(1910, 2340)
+ax_map.set_xlim(780, 1720)
+ax_map.set_ylim(1900, 2420)
 ax_map.set_xlabel("Easting (m)")
 ax_map.set_ylabel("Northing (m)")
 ax_map.grid(color=GRID, lw=0.6)
 ax_map.set_axisbelow(True)
-ax_map.set_title("(a) Adjusted network, 95 % error ellipses",
-                 loc="left", fontsize=9, color=INK)
+ax_map.set_title("(a) Adjusted network, 95 % ellipses", loc="left",
+                 fontsize=9.5, color=INK)
 ax_map.legend(
     handles=[
         Line2D([], [], marker="^", ls="", color=INK, markersize=7,
-               label="Fixed control point"),
+               label="Fixed point"),
         Line2D([], [], marker="o", ls="", markerfacecolor="white",
                markeredgecolor=INK, markersize=6, label="Adjusted point"),
         Line2D([], [], color=ELLIPSE, lw=1.5,
-               label=f"Error ellipse (× {ELLIPSE_SCALE:,})"),
+               label=f"Ellipse ({TIMES} {ELLIPSE_SCALE:,})"),
     ],
-    loc="upper center", bbox_to_anchor=(0.5, -0.3), ncol=3, fontsize=6.5,
+    loc="upper center", bbox_to_anchor=(0.5, -0.24), ncol=3, fontsize=7.5,
     frameon=False, handletextpad=0.4, columnspacing=1.0)
 
 # (b) Standardized residuals against the data-snooping threshold ------------
@@ -136,18 +137,18 @@ for obs_type, (colour, marker) in TYPE_STYLE.items():
 
 ax_res.axhline(threshold, color=INK, lw=1, ls=(0, (4, 3)), zorder=1)
 ax_res.annotate(f"Outlier threshold |w| = {threshold:g}", (x - 2.5, threshold),
-                xytext=(0, 4), textcoords="offset points", ha="right",
-                fontsize=7, color=INK)
+                xytext=(0, -4), textcoords="offset points", ha="right",
+                va="top", fontsize=8, color=INK)
 ax_res.set_xticks([t for t, _ in ticks], [n.capitalize() for _, n in ticks])
 ax_res.tick_params(axis="x", length=0)
-ax_res.set_ylim(0, threshold * 1.25)
-ax_res.set_ylabel("|Standardized residual|  $|w_i|$")
+ax_res.set_ylim(0, threshold * 1.4)
+ax_res.set_ylabel("|Standardized residual|")
 ax_res.grid(axis="y", color=GRID, lw=0.6)
 ax_res.set_axisbelow(True)
-ax_res.set_title(f"(b) Data snooping, {len(residuals)} observations",
-                 loc="left", fontsize=9, color=INK)
-ax_res.legend(loc="upper left", fontsize=7, frameon=False)
+ax_res.set_title(f"(b) Data snooping, n = {len(residuals)}", loc="left",
+                 fontsize=9.5, color=INK)
+ax_res.legend(loc="upper left", fontsize=8, frameon=False)
 
-fig.tight_layout(w_pad=2.5)
+fig.tight_layout(w_pad=2.0)
 fig.savefig(OUTPUT, dpi=300, facecolor="white")
 print(f"wrote {OUTPUT.relative_to(ROOT)}")
