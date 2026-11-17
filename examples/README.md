@@ -115,11 +115,26 @@ In QGIS:
 
 ## Expected Results
 
-All datasets are designed with small random errors to produce:
-- Converged solutions (typically 2-4 iterations)
-- Variance factors near 1.0
-- Passing chi-square test
-- No flagged outliers (standardized residuals < 3)
+All datasets contain small random errors and produce:
+- Converged solutions (1-3 iterations)
+- No flagged outliers (all |standardized residuals| < 3)
+- Variance factors well below 1.0 (0.006-0.19): the observations agree much
+  better than their stated sigmas imply. The two-sided chi-square global test
+  therefore fails at the **lower** bound, which is the expected result when the
+  a-priori sigmas are pessimistic. Tightening the sigmas in the input files
+  brings the variance factor towards 1.0 and lets the test pass.
+
+| Example | DOF | Variance factor | Global test |
+|---|---|---|---|
+| 1d_leveling | 8 | 0.011 | fails (lower bound) |
+| 2d_traverse | 13 | 0.193 | fails (lower bound) |
+| 3d_gnss | 27 | 0.006 | fails (lower bound) |
+| mixed_network | 25 | 0.155 | fails (lower bound) |
+
+The committed outputs in each `Result/` folder were generated with plugin
+version 1.0.6 in QGIS 3.44 (1D, 3D, and mixed: regenerated after the fixes in
+#21 and #23; the 2D traverse output dates from version 1.0.1 and is not
+affected by those fixes).
 
 ## Testing Robust Estimation
 
