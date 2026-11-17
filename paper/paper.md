@@ -13,11 +13,13 @@ authors:
   - name: Osman Osama Ahmed Ibrahim
     orcid: 0009-0003-2594-6310
     corresponding: true
-    affiliation: 1
+    affiliation: "1, 2"
 affiliations:
   - index: 1
     name: Karadeniz Technical University, Trabzon, Türkiye
     ror: 03z8fyr40
+  - index: 2
+    name: Hydraulics Research Center, Ministry of Irrigation and Water Resources, Wad Madani, Sudan
 date: 17 November 2026
 bibliography: paper.bib
 ---
@@ -189,16 +191,17 @@ published as a documentation site built from the repository.
 
 The plugin has been distributed through the official QGIS plugin repository
 since January 2026 and had been downloaded more than 1,300 times across three
-releases by November 2026. It is in active use in three settings:
+releases by November 2026. It is in use in two settings:
 
-- **Teaching.** It is used in [course name and code, e.g. "Adjustment
-  Computations (HRT 3xx)"] at [institution] in [semester], where students
-  adjust their own field networks and interpret the reliability diagnostics.
-- **Practice and research.** It was used to adjust [the network(s) of
-  project or thesis title, with a short description: size, observation
-  types, purpose].
-- **External users.** It is used by [users or groups outside the author's
-  work, e.g. surveyors or students at named institutions].
+- **Training.** At the Hydraulics Research Center (Sudan), where the author
+  trains engineers and researchers in surveying and GIS, the plugin was used
+  in [month and year of the session(s)] to teach least-squares network
+  adjustment and quality control to [number] participants, who adjusted
+  [what they adjusted, e.g. their own total-station and leveling data].
+- **Practice.** It was used to adjust the [observation types, e.g. leveling
+  and GNSS] network of [project name, place, and year], with [number of
+  points and observations], [purpose, e.g. control for canal
+  rehabilitation].
 
 Its significance lies in making reliability-aware adjustment — previously tied
 to licensed software — available where geospatial data are already managed, and
@@ -208,18 +211,20 @@ to re-derive and audit a published result.
 
 # AI usage disclosure
 
-<!-- TODO (author): fill in the [bracketed] model versions and scope. JOSS
-     treats an incomplete or inaccurate disclosure as an ethics breach. -->
+<!-- TODO (author): fill in the [bracketed] scope. JOSS treats an incomplete
+     or inaccurate disclosure as an ethics breach. -->
 
 Anthropic's Claude, used through the Claude Code assistant, was used during
-development of the software: [model version(s), e.g. "Claude Opus 4.5"] assisted
-with [scope, e.g. "implementing parts of the solvers and QGIS integration
-layer, writing unit tests, and drafting the README and documentation"]. Claude
-Opus 5.5 was used to restructure and copy-edit this paper, to generate the
-figure script, to write test suites for the 1D, 3D, mixed, and robust solvers,
-and to diagnose and fix the defects those tests revealed (Python 3.9
-compatibility, inconsistent scaling of standardized residuals, and
-non-converging robust estimation). The
+development of the software: Claude Opus 4.5 and Claude Sonnet 4.5 (January to
+June 2026) assisted with [scope, e.g. "implementing parts of the solvers and
+QGIS integration layer, writing unit tests, and drafting the README and
+documentation"]. Claude Opus 5.5 (November 2026) was used to restructure and
+copy-edit this paper, to write the figure script and the example-data
+generator, to write test suites for the 1D, 3D, mixed, and robust solvers, and
+to diagnose and fix the defects those tests revealed (Python 3.9
+compatibility, inconsistent scaling of standardized residuals, the
+significance level of the global test, and non-converging robust
+estimation). The
 author chose the adjustment models, algorithms, and software architecture,
 reviewed and edited all AI-assisted code and text, and verified correctness
 against the automated test suite and the worked examples.
