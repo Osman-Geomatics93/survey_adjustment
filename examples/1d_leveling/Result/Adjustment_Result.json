@@ -1,7 +1,7 @@
 {
   "metadata": {
     "plugin_version": "1.0.6",
-    "timestamp": "2026-11-17T19:57:30.432179Z",
+    "timestamp": "2026-11-17T20:15:16.956303Z",
     "network_name": "Leveling Network",
     "settings_snapshot": {
       "angle_unit": "degrees",
@@ -35,8 +35,8 @@
     "iterations": 1,
     "converged": true,
     "degrees_of_freedom": 8,
-    "variance_factor": 0.011311458007928458,
-    "a_posteriori_sigma0": 0.10635533840822688,
+    "variance_factor": 0.8935455984165668,
+    "a_posteriori_sigma0": 0.9452754087653855,
     "error_message": null,
     "messages": [],
     "robust_method": null,
@@ -46,12 +46,12 @@
   },
   "global_test": {
     "test_name": "chi_square",
-    "test_statistic": 0.09049166406342767,
+    "test_statistic": 7.148364787332534,
     "critical_lower": 2.179730747252651,
     "critical_upper": 17.534546139484654,
     "confidence_level": 0.95,
-    "passed": false,
-    "p_value": 3.3684099581318196e-07,
+    "passed": true,
+    "p_value": 0.9585735299801962,
     "degrees_of_freedom": 8
   },
   "datum_summary": {
@@ -125,52 +125,52 @@
       "name": "TP1",
       "easting": 1000.0,
       "northing": 1100.0,
-      "height": 100.85009862672999,
+      "height": 100.8500052822963,
       "fixed_easting": false,
       "fixed_northing": false,
       "fixed_height": false,
       "sigma_easting": null,
       "sigma_northing": null,
-      "sigma_height": 0.0001094527352758573
+      "sigma_height": 0.0009728047564594313
     },
     {
       "id": "TP2",
       "name": "TP2",
       "easting": 1000.0,
       "northing": 1200.0,
-      "height": 101.41987433049263,
+      "height": 101.42067417716093,
       "fixed_easting": false,
       "fixed_northing": false,
       "fixed_height": false,
       "sigma_easting": null,
       "sigma_northing": null,
-      "sigma_height": 0.00010553453483605882
+      "sigma_height": 0.0009379801902666287
     },
     {
       "id": "TP3",
       "name": "TP3",
       "easting": 1000.0,
       "northing": 1300.0,
-      "height": 101.98003520432043,
+      "height": 101.98145794852297,
       "fixed_easting": false,
       "fixed_northing": false,
       "fixed_height": false,
       "sigma_easting": null,
       "sigma_northing": null,
-      "sigma_height": 0.00011451108682043454
+      "sigma_height": 0.0010177628694751238
     },
     {
       "id": "TP4",
       "name": "TP4",
       "easting": 1000.0,
       "northing": 1400.0,
-      "height": 102.1498364554731,
+      "height": 102.1513289406817,
       "fixed_easting": false,
       "fixed_northing": false,
       "fixed_height": false,
       "sigma_easting": null,
       "sigma_northing": null,
-      "sigma_height": 0.00011013985627957846
+      "sigma_height": 0.0009789118179138433
     }
   ],
   "error_ellipses": [],
@@ -178,13 +178,13 @@
     {
       "obs_id": "HD001",
       "obs_type": "height_diff",
-      "observed": 0.8503,
-      "computed": 0.8500986267299879,
-      "residual": 0.00020137327001201744,
-      "standardized_residual": 0.1845283695712002,
+      "observed": 0.8509,
+      "computed": 0.8500052822962942,
+      "residual": 0.0008947177037057497,
+      "standardized_residual": 0.8198744504742728,
       "redundancy_number": 0.5292914002786707,
-      "mdb": 0.0007493856481035903,
-      "external_reliability": 0.00035274226907010183,
+      "mdb": 0.006660463268097126,
+      "external_reliability": 0.003135137338421347,
       "is_outlier_candidate": false,
       "flagged": false,
       "weight_factor": null,
@@ -194,13 +194,13 @@
     {
       "obs_id": "HD002",
       "obs_type": "height_diff",
-      "observed": 0.5698,
-      "computed": 0.5697757037626445,
-      "residual": 2.4296237355447836e-05,
-      "standardized_residual": 0.022237715498547524,
+      "observed": 0.5717,
+      "computed": 0.5706688948646388,
+      "residual": 0.0010311051353611989,
+      "standardized_residual": 0.9437437704366316,
       "redundancy_number": 0.5305363995501406,
-      "mdb": 0.0007485058474112877,
-      "external_reliability": 0.0001880850495332183,
+      "mdb": 0.006652643689207195,
+      "external_reliability": 0.0016716807519124772,
       "is_outlier_candidate": false,
       "flagged": false,
       "weight_factor": null,
@@ -210,13 +210,13 @@
     {
       "obs_id": "HD003",
       "obs_type": "height_diff",
-      "observed": 0.5602,
-      "computed": 0.5601608738277974,
-      "residual": 3.912617220258596e-05,
-      "standardized_residual": 0.03579636861697816,
+      "observed": 0.5621,
+      "computed": 0.5607837713620398,
+      "residual": 0.001316228637960215,
+      "standardized_residual": 1.2042119853864188,
       "redundancy_number": 0.5309752311705654,
-      "mdb": 0.0007481964771154665,
-      "external_reliability": 0.00020449533765632273,
+      "mdb": 0.006649894037546836,
+      "external_reliability": 0.0018175337203265704,
       "is_outlier_candidate": false,
       "flagged": false,
       "weight_factor": null,
@@ -226,13 +226,13 @@
     {
       "obs_id": "HD004",
       "obs_type": "height_diff",
-      "observed": 0.1698,
-      "computed": 0.16980125115267697,
-      "residual": -1.251152676962075e-06,
-      "standardized_residual": -0.0011748569589347716,
+      "observed": 0.17,
+      "computed": 0.16987099215872092,
+      "residual": 0.0001290078412790885,
+      "standardized_residual": 0.12114089900835008,
       "redundancy_number": 0.5040436101953125,
-      "mdb": 0.000767924871226412,
-      "external_reliability": 0.00020524355292775745,
+      "mdb": 0.006825237993822247,
+      "external_reliability": 0.0018241837814061115,
       "is_outlier_candidate": false,
       "flagged": false,
       "weight_factor": null,
@@ -242,13 +242,13 @@
     {
       "obs_id": "HD005",
       "obs_type": "height_diff",
-      "observed": 0.3501,
-      "computed": 0.35016354452689313,
-      "residual": -6.354452689311119e-05,
-      "standardized_residual": -0.05855789451438392,
+      "observed": 0.3481,
+      "computed": 0.3486710593183062,
+      "residual": -0.0005710593183061996,
+      "standardized_residual": -0.5262456573023228,
       "redundancy_number": 0.5233628323192896,
-      "mdb": 0.0007536181541681973,
-      "external_reliability": 0.0003592024225154945,
+      "mdb": 0.006698081350651352,
+      "external_reliability": 0.003192554523869448,
       "is_outlier_candidate": false,
       "flagged": false,
       "weight_factor": null,
@@ -258,13 +258,13 @@
     {
       "obs_id": "HD006",
       "obs_type": "height_diff",
-      "observed": 1.4198,
-      "computed": 1.4198743304926325,
-      "residual": -7.433049263250169e-05,
-      "standardized_residual": -0.042805177879133724,
+      "observed": 1.4201,
+      "computed": 1.420674177160933,
+      "residual": -0.0005741771609331092,
+      "standardized_residual": -0.33065508699630064,
       "redundancy_number": 0.7538438891949923,
-      "mdb": 0.0008372416358565306,
-      "external_reliability": 0.000206092144886466,
+      "mdb": 0.007441318333565315,
+      "external_reliability": 0.0018317259802524384,
       "is_outlier_candidate": false,
       "flagged": false,
       "weight_factor": null,
@@ -274,13 +274,13 @@
     {
       "obs_id": "HD007",
       "obs_type": "height_diff",
-      "observed": 1.1302,
-      "computed": 1.129936577590442,
-      "residual": 0.0002634224095581228,
-      "standardized_residual": 0.15904195456234707,
+      "observed": 1.1328,
+      "computed": 1.1314526662266786,
+      "residual": 0.001347333773321413,
+      "standardized_residual": 0.8134562170179355,
       "redundancy_number": 0.6858387763243339,
-      "mdb": 0.0008777695459581875,
-      "external_reliability": 0.000148869593526976,
+      "mdb": 0.007801526268222097,
+      "external_reliability": 0.0013231377754994171,
       "is_outlier_candidate": false,
       "flagged": false,
       "weight_factor": null,
@@ -290,13 +290,13 @@
     {
       "obs_id": "HD008",
       "obs_type": "height_diff",
-      "observed": 0.7298,
-      "computed": 0.7299621249804744,
-      "residual": -0.0001621249804744096,
-      "standardized_residual": -0.09654336776993698,
+      "observed": 0.731,
+      "computed": 0.7306547635207608,
+      "residual": 0.0003452364792392304,
+      "standardized_residual": 0.20558394076755004,
       "redundancy_number": 0.7050095392671791,
-      "mdb": 0.0008657530500915293,
-      "external_reliability": 0.00013719707917959139,
+      "mdb": 0.007694724877598114,
+      "external_reliability": 0.0012193936575625,
       "is_outlier_candidate": false,
       "flagged": false,
       "weight_factor": null,
@@ -306,13 +306,13 @@
     {
       "obs_id": "HD009",
       "obs_type": "height_diff",
-      "observed": 0.5203,
-      "computed": 0.5199647956795701,
-      "residual": 0.0003352043204298827,
-      "standardized_residual": 0.19888085282491935,
+      "observed": 0.522,
+      "computed": 0.5185420514770271,
+      "residual": 0.0034579485229728757,
+      "standardized_residual": 2.051643458507783,
       "redundancy_number": 0.7101879130964804,
-      "mdb": 0.0008625909326104853,
-      "external_reliability": 0.0002499892783238979,
+      "mdb": 0.00766662029968793,
+      "external_reliability": 0.002221879228549445,
       "is_outlier_candidate": false,
       "flagged": false,
       "weight_factor": null,
@@ -322,12 +322,12 @@
     {
       "obs_id": "HD010",
       "obs_type": "height_diff",
-      "observed": 2.4997,
+      "observed": 2.4983,
       "computed": 2.5,
-      "residual": -0.000300000000000189,
-      "standardized_residual": -0.1200000000000756,
+      "residual": -0.0017000000000000348,
+      "standardized_residual": -0.6800000000000139,
       "redundancy_number": 1.0,
-      "mdb": 0.0009086602709224181,
+      "mdb": 0.008076079883533272,
       "external_reliability": 0.0,
       "is_outlier_candidate": false,
       "flagged": false,
@@ -338,13 +338,13 @@
     {
       "obs_id": "HD011",
       "obs_type": "height_diff",
-      "observed": 1.2998,
-      "computed": 1.299737828743119,
-      "residual": 6.217125688112723e-05,
-      "standardized_residual": 0.033067615078735346,
+      "observed": 1.2994,
+      "computed": 1.3013236583853995,
+      "residual": -0.0019236583853994293,
+      "standardized_residual": -1.0231543999986208,
       "redundancy_number": 0.7303452109212237,
-      "mdb": 0.0009356644287689391,
-      "external_reliability": 0.00012744256567308315,
+      "mdb": 0.008316090086394518,
+      "external_reliability": 0.0011326965356297958,
       "is_outlier_candidate": false,
       "flagged": false,
       "weight_factor": null,
@@ -354,13 +354,13 @@
     {
       "obs_id": "HD012",
       "obs_type": "height_diff",
-      "observed": 1.0802,
-      "computed": 1.0801256695073675,
-      "residual": 7.433049263250169e-05,
-      "standardized_residual": 0.03785590789937288,
+      "observed": 1.0776,
+      "computed": 1.079325822839067,
+      "residual": -0.0017258228390670816,
+      "standardized_residual": -0.878947362415171,
       "redundancy_number": 0.7965651976818118,
-      "mdb": 0.0008959289046446387,
-      "external_reliability": 0.00018226311960753286,
+      "mdb": 0.007962924797549936,
+      "external_reliability": 0.0016199360320641692,
       "is_outlier_candidate": false,
       "flagged": false,
       "weight_factor": null,
@@ -371,49 +371,49 @@
   "flagged_observations": [],
   "covariance_matrix": [
     [
-      1.1979901259366897e-08,
-      5.584612123133182e-09,
-      5.439102153428564e-09,
-      4.673887647937201e-09
+      9.463490941900935e-07,
+      4.41154940237746e-07,
+      4.296604191190577e-07,
+      3.692125040273818e-07
     ],
     [
-      5.584612123133182e-09,
-      1.1137538043063312e-08,
-      6.156640299476141e-09,
-      4.960618573537216e-09
+      4.41154940237746e-07,
+      8.79806837332621e-07,
+      4.863421529545542e-07,
+      3.91862736766629e-07
     ],
     [
-      5.439102153428565e-09,
-      6.156640299476141e-09,
-      1.3112789004797097e-08,
-      6.310549861372188e-09
+      4.2966041911905777e-07,
+      4.863421529545542e-07,
+      1.0358412584822377e-06,
+      4.985001976106932e-07
     ],
     [
-      4.673887647937202e-09,
-      4.960618573537215e-09,
-      6.310549861372188e-09,
-      1.21307879412862e-08
+      3.6921250402738186e-07,
+      3.9186273676662897e-07,
+      4.985001976106932e-07,
+      9.582683472513852e-07
     ]
   ],
   "point_covariances": {
     "TP1": [
       [
-        1.1979901259366897e-08
+        9.463490941900935e-07
       ]
     ],
     "TP2": [
       [
-        1.1137538043063312e-08
+        8.79806837332621e-07
       ]
     ],
     "TP3": [
       [
-        1.3112789004797097e-08
+        1.0358412584822377e-06
       ]
     ],
     "TP4": [
       [
-        1.21307879412862e-08
+        9.582683472513852e-07
       ]
     ]
   }
