@@ -1,12 +1,12 @@
 {
   "metadata": {
-    "plugin_version": "1.0.1",
-    "timestamp": "2026-01-22T21:20:39.978874Z",
+    "plugin_version": "1.0.6",
+    "timestamp": "2026-11-17T19:57:30.432179Z",
     "network_name": "Leveling Network",
     "settings_snapshot": {
       "angle_unit": "degrees",
-      "sigma_angle_unit": "radians",
-      "sigma_leveling_unit": "m",
+      "sigma_angle_unit": "arcseconds",
+      "sigma_leveling_unit": "mm",
       "max_iterations": 50,
       "convergence_tol": 1e-06,
       "confidence_level": 0.95,
@@ -47,9 +47,9 @@
   "global_test": {
     "test_name": "chi_square",
     "test_statistic": 0.09049166406342767,
-    "critical_lower": 7.108247143265785,
-    "critical_upper": 7.585199733632606,
-    "confidence_level": 0.050000000000000044,
+    "critical_lower": 2.179730747252651,
+    "critical_upper": 17.534546139484654,
+    "confidence_level": 0.95,
     "passed": false,
     "p_value": 3.3684099581318196e-07,
     "degrees_of_freedom": 8
