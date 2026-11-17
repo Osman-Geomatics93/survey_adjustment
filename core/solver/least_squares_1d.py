@@ -30,8 +30,7 @@ from ..models.point import Point
 from ..models.observation import HeightDifferenceObservation
 from .robust import (
     RobustMethod,
-    get_weight_function,
-    compute_robust_weights,
+    IRLSReweighter,
 )
 from ..results.adjustment_result import (
     AdjustmentResult,
@@ -111,8 +110,9 @@ def adjust_leveling_1d(
         elif options.robust_estimator == RobustEstimator.IGG3:
             robust_method = RobustMethod.IGG3
 
-    weight_func = get_weight_function(
+    reweighter = IRLSReweighter(
         robust_method,
+        tolerance=options.robust_tol,
         huber_c=options.huber_c,
         danish_c=options.danish_c,
         igg3_k0=options.igg3_k0,
@@ -229,28 +229,21 @@ def adjust_leveling_1d(
             # inflate the a-posteriori sigma0 and prevent their own detection
             sigma0_tmp = math.sqrt(max(options.a_priori_variance, 1e-30))
 
-            # Compute qvv for standardized residuals
+            # qvv of the ordinary LS solution (first iteration, unit robust weights)
             try:
-                Qxx_tmp = np.linalg.solve(N, np.eye(n))
-                B_tmp = A @ Qxx_tmp
-                diag_AQAt = (B_tmp * A).sum(axis=1)
-                qvv_diag_tmp = (1.0 / Pdiag) - diag_AQAt
-                qvv_diag_tmp = np.maximum(qvv_diag_tmp, 1e-30)
-                std_res_tmp = residuals / (sigma0_tmp * np.sqrt(qvv_diag_tmp))
+                if reweighter.qvv is None:
+                    Qxx_tmp = np.linalg.solve(N, np.eye(n))
+                    diag_AQAt = ((A @ Qxx_tmp) * A).sum(axis=1)
+                    reweighter.freeze_qvv((1.0 / Pdiag) - diag_AQAt)
+                std_res_tmp = residuals / (sigma0_tmp * np.sqrt(reweighter.qvv))
             except np.linalg.LinAlgError:
                 std_res_tmp = residuals / (sigmas * sigma0_tmp)
 
             # Compute new robust weights
-            new_robust_weights = compute_robust_weights(std_res_tmp, weight_func)
-
-            # Check IRLS convergence
-            weight_change = np.abs(new_robust_weights - robust_weights)
-            max_weight_change = np.max(weight_change)
-
-            robust_weights = new_robust_weights
+            robust_weights, irls_settled = reweighter.update(std_res_tmp, robust_weights)
             robust_iterations = irls_iter
 
-            if max_weight_change < options.robust_tol:
+            if irls_settled:
                 robust_converged = True
                 robust_message = f"IRLS converged after {irls_iter} iterations"
                 break

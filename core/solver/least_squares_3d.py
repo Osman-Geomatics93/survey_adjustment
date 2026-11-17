@@ -37,8 +37,7 @@ from ..models.point import Point
 from ..models.observation import GnssBaselineObservation
 from .robust import (
     RobustMethod,
-    get_weight_function,
-    compute_robust_weights,
+    IRLSReweighter,
 )
 from ..results.adjustment_result import (
     AdjustmentResult,
@@ -127,8 +126,9 @@ def adjust_gnss_3d(
         elif options.robust_estimator == RobustEstimator.IGG3:
             robust_method = RobustMethod.IGG3
 
-    weight_func = get_weight_function(
+    reweighter = IRLSReweighter(
         robust_method,
+        tolerance=options.robust_tol,
         huber_c=options.huber_c,
         danish_c=options.danish_c,
         igg3_k0=options.igg3_k0,
@@ -310,24 +310,24 @@ def adjust_gnss_3d(
             # inflate the a-posteriori sigma0 and prevent their own detection
             sigma0_tmp = math.sqrt(max(options.a_priori_variance, 1e-30))
 
-            # Compute standardized residuals per baseline (use max of components)
+            # Standardized residuals per component, using qvv of the ordinary LS
+            # solution (first iteration, unit robust weights)
             try:
-                Qxx_tmp = np.linalg.solve(N, np.eye(n))
-                B_tmp = A @ Qxx_tmp
-                diag_AQAt = (B_tmp * A).sum(axis=1)
+                if reweighter.qvv is None:
+                    Qxx_tmp = np.linalg.solve(N, np.eye(n))
+                    diag_AQAt = ((A @ Qxx_tmp) * A).sum(axis=1)
 
-                # Build Qll diagonal
-                Qll_diag = np.zeros(m, dtype=float)
-                for i, C in enumerate(cov_blocks):
-                    row_base = 3 * i
-                    Qll_diag[row_base + 0] = C[0, 0]
-                    Qll_diag[row_base + 1] = C[1, 1]
-                    Qll_diag[row_base + 2] = C[2, 2]
+                    # Build Qll diagonal
+                    Qll_diag = np.zeros(m, dtype=float)
+                    for i, C in enumerate(cov_blocks):
+                        row_base = 3 * i
+                        Qll_diag[row_base + 0] = C[0, 0]
+                        Qll_diag[row_base + 1] = C[1, 1]
+                        Qll_diag[row_base + 2] = C[2, 2]
 
-                qvv_diag_tmp = Qll_diag - diag_AQAt
-                qvv_diag_tmp = np.maximum(qvv_diag_tmp, 1e-30)
+                    reweighter.freeze_qvv(Qll_diag - diag_AQAt)
 
-                std_res_tmp = residuals / (sigma0_tmp * np.sqrt(qvv_diag_tmp))
+                std_res_tmp = residuals / (sigma0_tmp * np.sqrt(reweighter.qvv))
             except np.linalg.LinAlgError:
                 # Fallback: normalize by observation sigma
                 std_res_tmp = np.zeros(m)
@@ -348,16 +348,10 @@ def adjust_gnss_3d(
                 )
 
             # Compute new robust weights
-            new_robust_weights = compute_robust_weights(baseline_std_res, weight_func)
-
-            # Check IRLS convergence
-            weight_change = np.abs(new_robust_weights - robust_weights)
-            max_weight_change = np.max(weight_change)
-
-            robust_weights = new_robust_weights
+            robust_weights, irls_settled = reweighter.update(baseline_std_res, robust_weights)
             robust_iterations = irls_iter
 
-            if max_weight_change < options.robust_tol:
+            if irls_settled:
                 robust_converged = True
                 robust_message = f"IRLS converged after {irls_iter} iterations"
                 break

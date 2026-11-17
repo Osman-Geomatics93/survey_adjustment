@@ -38,8 +38,7 @@ from ..models.options import AdjustmentOptions, RobustEstimator
 from ..models.point import Point
 from .robust import (
     RobustMethod,
-    get_weight_function,
-    compute_robust_weights,
+    IRLSReweighter,
 )
 from ..models.observation import (
     Observation,
@@ -311,8 +310,9 @@ def adjust_network_mixed(
         elif options.robust_estimator == RobustEstimator.IGG3:
             robust_method = RobustMethod.IGG3
 
-    weight_func = get_weight_function(
+    reweighter = IRLSReweighter(
         robust_method,
+        tolerance=options.robust_tol,
         huber_c=options.huber_c,
         danish_c=options.danish_c,
         igg3_k0=options.igg3_k0,
@@ -483,44 +483,45 @@ def adjust_network_mixed(
             # inflate the a-posteriori sigma0 and prevent their own detection
             sigma0_tmp = math.sqrt(max(options.a_priori_variance, 1e-30))
 
-            # Compute standardized residuals
+            # Standardized residuals, using qvv of the ordinary LS solution
+            # (first iteration, unit robust weights)
             try:
-                # Rebuild N with robust weights
-                N_tmp = np.zeros((n, n), dtype=float)
-                if m_classical > 0:
-                    A_c = A_tmp[:m_classical, :]
-                    weights_c = (1.0 / (sigmas_c_tmp ** 2)) * robust_weights_classical
-                    N_tmp += (A_c.T * weights_c) @ A_c
-                for i, P_block in enumerate(gnss_weight_blocks):
-                    row_base = m_classical + 3 * i
-                    A_g = A_tmp[row_base:row_base+3, :]
-                    N_tmp += A_g.T @ (P_block * robust_weights_gnss[i]) @ A_g
-                if m_leveling > 0:
-                    row_start = m_classical + m_gnss
-                    A_l = A_tmp[row_start:row_start + m_leveling, :]
-                    weights_l = (1.0 / (sigmas_l_tmp ** 2)) * robust_weights_leveling
-                    N_tmp += (A_l.T * weights_l) @ A_l
+                if reweighter.qvv is None:
+                    # Rebuild N with robust weights
+                    N_tmp = np.zeros((n, n), dtype=float)
+                    if m_classical > 0:
+                        A_c = A_tmp[:m_classical, :]
+                        weights_c = (1.0 / (sigmas_c_tmp ** 2)) * robust_weights_classical
+                        N_tmp += (A_c.T * weights_c) @ A_c
+                    for i, P_block in enumerate(gnss_weight_blocks):
+                        row_base = m_classical + 3 * i
+                        A_g = A_tmp[row_base:row_base+3, :]
+                        N_tmp += A_g.T @ (P_block * robust_weights_gnss[i]) @ A_g
+                    if m_leveling > 0:
+                        row_start = m_classical + m_gnss
+                        A_l = A_tmp[row_start:row_start + m_leveling, :]
+                        weights_l = (1.0 / (sigmas_l_tmp ** 2)) * robust_weights_leveling
+                        N_tmp += (A_l.T * weights_l) @ A_l
 
-                Qxx_tmp = np.linalg.solve(N_tmp, np.eye(n))
-                B_tmp = A_tmp @ Qxx_tmp
-                diag_AQAt = (B_tmp * A_tmp).sum(axis=1)
+                    Qxx_tmp = np.linalg.solve(N_tmp, np.eye(n))
+                    diag_AQAt = ((A_tmp @ Qxx_tmp) * A_tmp).sum(axis=1)
 
-                # Build Qll diagonal
-                Qll_diag = np.zeros(m, dtype=float)
-                if m_classical > 0:
-                    Qll_diag[:m_classical] = sigmas_c_tmp ** 2
-                for i, C in enumerate(gnss_cov_blocks):
-                    row_base = m_classical + 3 * i
-                    Qll_diag[row_base + 0] = C[0, 0]
-                    Qll_diag[row_base + 1] = C[1, 1]
-                    Qll_diag[row_base + 2] = C[2, 2]
-                if m_leveling > 0:
-                    row_start = m_classical + m_gnss
-                    Qll_diag[row_start:row_start + m_leveling] = sigmas_l_tmp ** 2
+                    # Build Qll diagonal
+                    Qll_diag = np.zeros(m, dtype=float)
+                    if m_classical > 0:
+                        Qll_diag[:m_classical] = sigmas_c_tmp ** 2
+                    for i, C in enumerate(gnss_cov_blocks):
+                        row_base = m_classical + 3 * i
+                        Qll_diag[row_base + 0] = C[0, 0]
+                        Qll_diag[row_base + 1] = C[1, 1]
+                        Qll_diag[row_base + 2] = C[2, 2]
+                    if m_leveling > 0:
+                        row_start = m_classical + m_gnss
+                        Qll_diag[row_start:row_start + m_leveling] = sigmas_l_tmp ** 2
 
-                qvv_diag_tmp = Qll_diag - diag_AQAt
-                qvv_diag_tmp = np.maximum(qvv_diag_tmp, 1e-30)
-                std_res_tmp = residuals_tmp / (sigma0_tmp * np.sqrt(qvv_diag_tmp))
+                    reweighter.freeze_qvv(Qll_diag - diag_AQAt)
+
+                std_res_tmp = residuals_tmp / (sigma0_tmp * np.sqrt(reweighter.qvv))
             except np.linalg.LinAlgError:
                 # Fallback
                 std_res_tmp = np.zeros(m)
@@ -537,39 +538,33 @@ def adjust_network_mixed(
                         residuals_tmp[row_start:row_start + m_leveling] / (sigmas_l_tmp * sigma0_tmp)
                     )
 
-            # Update robust weights
-            max_weight_change = 0.0
-
-            # Classical
-            if m_classical > 0:
-                new_weights_c = compute_robust_weights(std_res_tmp[:m_classical], weight_func)
-                max_weight_change = max(max_weight_change, np.max(np.abs(new_weights_c - robust_weights_classical)))
-                robust_weights_classical = new_weights_c
-
-            # GNSS (use max standardized residual per baseline)
-            if len(gnss_obs) > 0:
-                baseline_std_res = np.zeros(len(gnss_obs))
-                for i in range(len(gnss_obs)):
-                    row_base = m_classical + 3 * i
-                    baseline_std_res[i] = max(
-                        abs(std_res_tmp[row_base + 0]),
-                        abs(std_res_tmp[row_base + 1]),
-                        abs(std_res_tmp[row_base + 2]),
-                    )
-                new_weights_gnss = compute_robust_weights(baseline_std_res, weight_func)
-                max_weight_change = max(max_weight_change, np.max(np.abs(new_weights_gnss - robust_weights_gnss)))
-                robust_weights_gnss = new_weights_gnss
-
-            # Leveling
-            if m_leveling > 0:
-                row_start = m_classical + m_gnss
-                new_weights_l = compute_robust_weights(std_res_tmp[row_start:row_start + m_leveling], weight_func)
-                max_weight_change = max(max_weight_change, np.max(np.abs(new_weights_l - robust_weights_leveling)))
-                robust_weights_leveling = new_weights_l
+            # Update robust weights for all observation groups together, one
+            # weight per classical observation, per baseline, and per leveling line
+            baseline_std_res = np.zeros(len(gnss_obs))
+            for i in range(len(gnss_obs)):
+                row_base = m_classical + 3 * i
+                baseline_std_res[i] = max(
+                    abs(std_res_tmp[row_base + 0]),
+                    abs(std_res_tmp[row_base + 1]),
+                    abs(std_res_tmp[row_base + 2]),
+                )
+            row_start = m_classical + m_gnss
+            group_std_res = np.concatenate([
+                std_res_tmp[:m_classical],
+                baseline_std_res,
+                std_res_tmp[row_start:row_start + m_leveling],
+            ])
+            group_weights = np.concatenate([
+                robust_weights_classical, robust_weights_gnss, robust_weights_leveling,
+            ])
+            new_weights, irls_settled = reweighter.update(group_std_res, group_weights)
+            robust_weights_classical = new_weights[:m_classical]
+            robust_weights_gnss = new_weights[m_classical:m_classical + len(gnss_obs)]
+            robust_weights_leveling = new_weights[m_classical + len(gnss_obs):]
 
             robust_iterations = irls_iter
 
-            if max_weight_change < options.robust_tol:
+            if irls_settled:
                 robust_converged = True
                 robust_message = f"IRLS converged after {irls_iter} iterations"
                 break

@@ -8,9 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Test suites for the 1D leveling, 3D GNSS, mixed and robust solvers, checked against closed-form results (#5). Known robust-estimation limitations are recorded as expected failures (#16).
+- Test suites for the 1D leveling, 3D GNSS, mixed and robust solvers, checked against closed-form results (#5).
 
 ### Fixed
+- Robust estimation now isolates gross errors reliably in all four solvers (#16). Standardized residuals in the IRLS loop use the residual cofactors of the ordinary least-squares solution, so down-weighted observations no longer bounce back to full weight; the Danish and IGG-III methods start from a converged Huber solution, so they no longer reject good observations; and the Danish weight never underflows to exactly zero.
 - The plugin failed to import on Python 3.9, the interpreter bundled with QGIS 3.22 and 3.28 LTR; CI now also tests Python 3.9 (#1).
 - The 3D GNSS and mixed solvers now standardize residuals with the a-priori sigma0, like the 1D and 2D solvers, so outlier flags are consistent across solvers; consistent data no longer produces NaN standardized residuals (#17).
 - GNSS redundancy numbers are computed from the full 3×3 covariance blocks and now sum to the degrees of freedom for correlated baselines (#17).
