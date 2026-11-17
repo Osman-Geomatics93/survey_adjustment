@@ -147,8 +147,9 @@ the a-priori $\sigma_0$ to avoid masking by the outliers being sought.
 # Validation and example usage
 
 The repository ships five worked datasets — 1D leveling, a 2D traverse, 2D
-trilateration, a 3D GNSS network, and a mixed network — each with committed
-JSON, HTML, and GeoPackage outputs that double as regression fixtures. The tools
+trilateration, a 3D GNSS network, and a mixed network — four of which include
+committed JSON, HTML, and GeoPackage outputs that double as regression
+fixtures. \autoref{fig:traverse} shows the result for the 2D traverse. The tools
 run from the Processing toolbox or from Python:
 
 ```python
@@ -164,6 +165,13 @@ processing.run("survey_adjustment:adjust_network_2d", {
     "OUTPUT_HTML": "report.html",
 })
 ```
+
+![Adjustment of the example 2D traverse (two fixed control points, three new
+points, 23 distance, direction, and angle observations). (a) Adjusted points and
+95 % error ellipses, drawn 5,000 times enlarged; labels give the semi-axes.
+(b) Absolute standardized residuals used for data snooping; no observation
+exceeds the outlier threshold. Generated from the plugin's JSON report by
+`paper/make_figure.py`.\label{fig:traverse}](figure.png)
 
 Tutorials for each solver, the input formats, and the underlying theory are
 published as a documentation site built from the repository.
