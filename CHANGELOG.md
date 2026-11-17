@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Test suites for the 1D leveling, 3D GNSS, mixed and robust solvers, checked against closed-form results (#5).
+- `examples/generate_observations.py`: reproducible generator for the example observations (#25).
+- Committed outputs for the `2d_trilateration` example (#25).
+
+### Changed
+- The example observations now carry random errors consistent with their stated sigmas, so every example passes the global chi-square test; previously the errors were 3–13 times smaller than the sigmas and every example failed at the lower bound (#25).
 
 ### Fixed
 - The global chi-square test in the 1D leveling and 3D GNSS solvers used the confidence level as its significance level, so with the default settings it accepted only the central 5 % of the distribution and failed almost every network (#22).
