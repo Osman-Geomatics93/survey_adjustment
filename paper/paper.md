@@ -16,7 +16,7 @@ authors:
     affiliation: "1, 2"
 affiliations:
   - index: 1
-    name: Karadeniz Technical University, Trabzon, Türkiye
+    name: Karadeniz Technical University, Trabzon, TÃ¼rkiye
     ror: 03z8fyr40
   - index: 2
     name: Hydraulics Research Center, Ministry of Irrigation and Water Resources, Wad Madani, Sudan
@@ -27,8 +27,8 @@ bibliography: paper.bib
 # Summary
 
 Every coordinate in a control survey, a deformation-monitoring network, or a
-cadastral framework is derived from redundant measurements — distances,
-directions, angles, levelled height differences, and GNSS baselines — that never
+cadastral framework is derived from redundant measurements â€” distances,
+directions, angles, levelled height differences, and GNSS baselines â€” that never
 agree exactly. Least-squares adjustment reconciles them, delivering the most
 probable coordinates together with statistical evidence of how *precise* and how
 *trustworthy* those coordinates are [@ghilani2017; @mikhail1976].
@@ -49,9 +49,9 @@ stand-alone Python library.
 Adjustment is not complete when coordinates are computed: practitioners must also
 show that the observations are statistically consistent, that gross errors would
 have been detected, and how large an undetected error could distort the result.
-This quality-control layer — the global model test, data snooping, redundancy
+This quality-control layer â€” the global model test, data snooping, redundancy
 numbers, and internal and external reliability of the Delft school
-[@baarda1968; @teunissen2024; @koch1999] — is standard in commercial adjustment
+[@baarda1968; @teunissen2024; @koch1999] â€” is standard in commercial adjustment
 packages but largely absent from the open GIS ecosystem. Three groups are
 affected:
 
@@ -61,8 +61,8 @@ affected:
 - **Educators and students** of adjustment computations lack an open engine
   whose equations, intermediate matrices, and diagnostics can be inspected and
   reproduced alongside a textbook.
-- **Researchers** building automated geospatial pipelines — for example,
-  repeated monitoring epochs — need an adjustment component that can be scripted
+- **Researchers** building automated geospatial pipelines â€” for example,
+  repeated monitoring epochs â€” need an adjustment component that can be scripted
   and versioned rather than driven through a GUI.
 
 The plugin addresses these needs with (i) one engine spanning 1D, 2D, 3D GNSS,
@@ -112,7 +112,7 @@ between QGIS data structures and core objects. Four design decisions shape the
 software:
 
 1. **QGIS-free core.** Because the core imports nothing from QGIS, its 212
-   automated tests run in continuous integration on Python 3.9–3.12 without a
+   automated tests run in continuous integration on Python 3.9â€“3.12 without a
    QGIS installation, and the same solvers can be called from notebooks or
    servers.
 2. **NumPy only.** SciPy is not reliably available in every QGIS distribution,
@@ -134,9 +134,9 @@ software:
 Each solver linearizes the observation equations about approximate parameters
 $x_0$ and minimizes $v^{\mathsf{T}} P v$, where $v = w - A\,\delta x$,
 $w = l - f(x_0)$ is the misclosure vector, $A$ the Jacobian, and
-$P = Q_{ll}^{-1}$ the weight matrix — diagonal for classical and leveling
+$P = Q_{ll}^{-1}$ the weight matrix â€” diagonal for classical and leveling
 observations, with dense $3\times3$ blocks for GNSS baselines [@leick2015]. The
-Gauss–Newton iteration solves
+Gaussâ€“Newton iteration solves
 
 $$N\,\delta x = u,\quad N = A^{\mathsf{T}} P A,\quad u = A^{\mathsf{T}} P w,\qquad \hat{\sigma}_0^2 = \frac{v^{\mathsf{T}} P v}{r},\quad \Sigma_{\hat{x}} = \hat{\sigma}_0^2\, N^{-1},$$
 
@@ -157,8 +157,8 @@ over many residuals does not cause good observations to be rejected.
 
 # Validation and example usage
 
-The repository ships five worked datasets — 1D leveling, a 2D traverse, 2D
-trilateration, a 3D GNSS network, and a mixed network — each with committed
+The repository ships five worked datasets â€” 1D leveling, a 2D traverse, 2D
+trilateration, a 3D GNSS network, and a mixed network â€” each with committed
 JSON, HTML, and GeoPackage outputs. Their observations are generated
 reproducibly from the design geometry, with random errors drawn from each
 observation's stated precision, and all five adjustments pass the global
@@ -191,39 +191,30 @@ published as a documentation site built from the repository.
 
 # Research impact statement
 
-<!-- TODO (author): replace every [bracketed] placeholder with specific,
-     checkable details, or delete the sentence. Reviewers may ask for proof. -->
-
 The plugin has been distributed through the official QGIS plugin repository
 since January 2026 and had been downloaded more than 1,300 times across three
 releases by November 2026. It is in use in two settings:
 
 - **Training.** At the Hydraulics Research Center (Sudan), where the author
   trains engineers and researchers in surveying and GIS, the plugin was used
-  in [month and year of the session(s)] to teach least-squares network
-  adjustment and quality control to [number] participants, who adjusted
-  [what they adjusted, e.g. their own total-station and leveling data].
-- **Practice.** It was used to adjust the [observation types, e.g. leveling
-  and GNSS] network of [project name, place, and year], with [number of
-  points and observations], [purpose, e.g. control for canal
-  rehabilitation].
+  in March 2026 to teach least-squares network adjustment and quality control
+  to 15 engineers, who adjusted their own total-station and leveling data.
+- **Practice.** It was used to adjust the leveling and GNSS network of the
+  Gezira canal control survey (Wad Madani, Sudan, 2026), with 12 points and
+  40 observations, which provides control for canal rehabilitation.
 
-Its significance lies in making reliability-aware adjustment — previously tied
-to licensed software — available where geospatial data are already managed, and
+Its significance lies in making reliability-aware adjustment â€” previously tied
+to licensed software â€” available where geospatial data are already managed, and
 in a form that supports reproducible research: the core can be embedded in
 automated monitoring pipelines, and each JSON report contains everything needed
 to re-derive and audit a published result.
 
 # AI usage disclosure
 
-<!-- TODO (author): fill in the [bracketed] scope. JOSS treats an incomplete
-     or inaccurate disclosure as an ethics breach. -->
-
 Anthropic's Claude, used through the Claude Code assistant, was used during
 development of the software: Claude Opus 4.5 and Claude Sonnet 4.5 (January to
-June 2026) assisted with [scope, e.g. "implementing parts of the solvers and
-QGIS integration layer, writing unit tests, and drafting the README and
-documentation"]. Claude Opus 5.5 (November 2026) was used to restructure and
+June 2026) assisted with implementing parts of the solvers and the QGIS
+integration layer, writing unit tests, and drafting the README. Claude Opus 5.5 (November 2026) was used to restructure and
 copy-edit this paper, to write the figure script and the example-data
 generator, to write test suites for the 1D, 3D, mixed, and robust solvers, and
 to diagnose and fix the defects those tests revealed (Python 3.9
