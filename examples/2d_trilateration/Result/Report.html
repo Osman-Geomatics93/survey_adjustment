@@ -1,0 +1,64 @@
+<!doctype html>
+<html><head><meta charset='utf-8'>
+<title>Survey Adjustment Report</title>
+<style>
+    body { font-family: Arial, sans-serif; margin: 24px; }
+    h1 { margin-bottom: 4px; }
+    .meta { color: #555; margin-bottom: 16px; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0 24px 0; }
+    th, td { border: 1px solid #ddd; padding: 6px 8px; font-size: 13px; }
+    th { background: #f5f5f5; text-align: left; }
+    .ok { color: #067d00; font-weight: bold; }
+    .bad { color: #b00020; font-weight: bold; }
+    .flag { background: #fff3cd; }
+    .small { font-size: 12px; color: #666; }
+    </style>
+</head><body>
+<h1>Survey Adjustment Report</h1>
+<div class='meta'>Success: <span class='ok'>True</span> | Converged: <span class='ok'>True</span> | Iterations: 2 | DOF: 9 | σ₀²: 1.1435132904813985</div>
+<h2>Constraint Health Summary</h2>
+<table><thead><tr><th>Category</th><th>Status</th><th>Details</th></tr></thead><tbody>
+<tr><td>Horizontal Datum</td><td class='ok'>OK</td><td>Fixed E: [&#x27;BM1&#x27;, &#x27;BM2&#x27;, &#x27;BM3&#x27;], Fixed N: [&#x27;BM1&#x27;, &#x27;BM2&#x27;, &#x27;BM3&#x27;]</td></tr>
+<tr><td>Orientation</td><td class='ok'>OK</td><td>No direction observations</td></tr>
+<tr><td>Connectivity</td><td class='ok'>OK</td><td>All points connected</td></tr>
+<tr><td>Degrees of Freedom</td><td class='ok'>OK (9)</td><td>Redundant: DOF = 9 (15 obs, 6 unknowns)</td></tr>
+</tbody></table>
+<h2>Chi-square Global Test</h2>
+<table><thead><tr><th>Statistic</th><th>Lower</th><th>Upper</th><th>p-value</th><th>DOF</th><th>Passed</th></tr></thead><tbody>
+<tr><td>10.291619614332587</td><td>2.7003894999803593</td><td>19.022767798641635</td><td>0.6547939210364626</td><td>9</td><td class='ok'>True</td></tr>
+</tbody></table>
+<h2>Adjusted Points</h2>
+<table><thead><tr><th>ID</th><th>Name</th><th>E</th><th>N</th><th>σE</th><th>σN</th></tr></thead><tbody>
+<tr><td>BM1</td><td>BM1</td><td>5000.0000</td><td>10000.0000</td><td>0.0000</td><td>0.0000</td></tr>
+<tr><td>BM2</td><td>BM2</td><td>5300.0000</td><td>10000.0000</td><td>0.0000</td><td>0.0000</td></tr>
+<tr><td>BM3</td><td>BM3</td><td>5150.0000</td><td>10260.0000</td><td>0.0000</td><td>0.0000</td></tr>
+<tr><td>P1</td><td>P1</td><td>5079.9964</td><td>10100.0030</td><td>0.0029</td><td>0.0027</td></tr>
+<tr><td>P2</td><td>P2</td><td>5219.9968</td><td>10099.9982</td><td>0.0029</td><td>0.0027</td></tr>
+<tr><td>P3</td><td>P3</td><td>5149.9965</td><td>10179.9998</td><td>0.0032</td><td>0.0017</td></tr>
+</tbody></table>
+<h2>Error Ellipses</h2>
+<table><thead><tr><th>Point</th><th>a (m)</th><th>b (m)</th><th>θ (deg)</th><th>Confidence</th></tr></thead><tbody>
+<tr><td>P1</td><td>0.0085</td><td>0.0048</td><td>311.89</td><td>0.950</td></tr>
+<tr><td>P2</td><td>0.0085</td><td>0.0048</td><td>228.11</td><td>0.950</td></tr>
+<tr><td>P3</td><td>0.0077</td><td>0.0041</td><td>270.00</td><td>0.950</td></tr>
+</tbody></table>
+<h2>Residuals</h2>
+<table><thead><tr><th>ID</th><th>Type</th><th>Observed</th><th>Computed</th><th>v</th><th>w</th><th>Redundancy</th><th>MDB</th><th>Ext.Rel.</th><th>Flag</th></tr></thead><tbody>
+<tr class=''><td>D001</td><td>distance</td><td>128.062</td><td>128.06260699175564</td><td>-0.000606991755631725</td><td>-0.2575519500840454</td><td>0.6171537755936888</td><td>0.013955564404855875</td><td>0.00455562475169754</td><td></td></tr>
+<tr class=''><td>D002</td><td>distance</td><td>241.655</td><td>241.65726593053856</td><td>-0.002265930538555949</td><td>-0.91184683276546</td><td>0.385948550822366</td><td>0.02352979425971526</td><td>0.011929216142724148</td><td></td></tr>
+<tr class=''><td>D003</td><td>distance</td><td>234.308</td><td>234.30506388117442</td><td>0.0029361188255734305</td><td>0.8857243762594655</td><td>0.6867996706609746</td><td>0.017638749719502095</td><td>0.006169230424214997</td><td></td></tr>
+<tr class=''><td>D004</td><td>distance</td><td>241.662</td><td>241.66541859586567</td><td>-0.0034185958656678395</td><td>-1.375672150250987</td><td>0.3859629817433562</td><td>0.023529354373259884</td><td>0.011928712137397147</td><td></td></tr>
+<tr class=''><td>D005</td><td>distance</td><td>128.064</td><td>128.06305824690367</td><td>0.0009417530963276022</td><td>0.3995936698933706</td><td>0.6171552169120067</td><td>0.01395554810877524</td><td>0.004555025353703731</td><td></td></tr>
+<tr class=''><td>D006</td><td>distance</td><td>234.314</td><td>234.30956915652638</td><td>0.004430843473613777</td><td>1.3366674827763874</td><td>0.6867617009116812</td><td>0.017639237319237867</td><td>0.006169971372949283</td><td></td></tr>
+<tr class=''><td>D007</td><td>distance</td><td>174.639</td><td>174.6411623949941</td><td>-0.0021623949940874354</td><td>-0.9782361797323356</td><td>0.5429253289365483</td><td>0.01487901045376201</td><td>0.007617329844164349</td><td></td></tr>
+<tr class=''><td>D008</td><td>distance</td><td>174.643</td><td>174.64287791266472</td><td>0.0001220873352849594</td><td>0.055232090242056206</td><td>0.5428948996434736</td><td>0.01487942743265236</td><td>0.007618181331069837</td><td></td></tr>
+<tr class=''><td>D009</td><td>distance</td><td>80.002</td><td>80.00022628042143</td><td>0.0017737195785656468</td><td>1.4115713054597356</td><td>0.39473377283406097</td><td>0.011633240286991023</td><td>0.00704120744602445</td><td></td></tr>
+<tr class=''><td>D010</td><td>distance</td><td>140.002</td><td>140.00038429175598</td><td>0.0016157082440315662</td><td>0.9998852867779398</td><td>0.29012357262758126</td><td>0.020354132253587575</td><td>0.007224708427034129</td><td></td></tr>
+<tr class=''><td>D011</td><td>distance</td><td>106.3</td><td>106.29905470131894</td><td>0.0009452986810600805</td><td>0.48346699682359684</td><td>0.42477791467971143</td><td>0.016821438657850008</td><td>0.007052331979758044</td><td></td></tr>
+<tr class=''><td>D012</td><td>distance</td><td>106.303</td><td>106.30287239231997</td><td>0.00012760768002806344</td><td>0.06526531156621543</td><td>0.424762614634551</td><td>0.016821741611128715</td><td>0.0070526770463012955</td><td></td></tr>
+<tr class=''><td>D013</td><td>distance</td><td>299.997</td><td>300.0</td><td>-0.002999999999985903</td><td>-0.7499999999964757</td><td>1.0</td><td>0.014617827650211607</td><td>0.0</td><td></td></tr>
+<tr class=''><td>D014</td><td>distance</td><td>300.158</td><td>300.1666203960727</td><td>-0.008620396072672065</td><td>-2.1550990181680163</td><td>1.0</td><td>0.014617827650211607</td><td>0.0</td><td></td></tr>
+<tr class=''><td>D015</td><td>distance</td><td>300.164</td><td>300.1666203960727</td><td>-0.0026203960727002595</td><td>-0.6550990181750649</td><td>1.0</td><td>0.014617827650211607</td><td>0.0</td><td></td></tr>
+</tbody></table>
+<div class='small'>Generated by Survey Adjustment core engine</div>
+</body></html>

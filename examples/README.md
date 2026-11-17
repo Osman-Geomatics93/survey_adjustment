@@ -113,13 +113,47 @@ In QGIS:
 In QGIS:
 - **Covariance format** = Full covariance (for the provided `baselines.csv`)
 
+## How the Observations Were Generated
+
+The observations are synthetic and fully reproducible:
+
+```bash
+python examples/generate_observations.py          # seed 2026 (default)
+```
+
+The script takes the design coordinates in each `points.csv` as the true
+geometry, recomputes every observation from it, and adds a random error drawn
+from that observation's own stated precision: `sigma` for distances,
+directions, angles and height differences, and the full 3×3 covariance for
+GNSS baselines. Observation IDs, sigmas, covariances and decimal places are
+unchanged. The errors therefore match the stated sigmas, as they would in good
+field data.
+
 ## Expected Results
 
-All datasets are designed with small random errors to produce:
-- Converged solutions (typically 2-4 iterations)
-- Variance factors near 1.0
-- Passing chi-square test
-- No flagged outliers (standardized residuals < 3)
+With the default seed, every adjustment converges and passes the two-sided
+chi-square global test at 95 %:
+
+| Example | DOF | Variance factor | Global test | Flagged (\|w\| > 3) |
+|---|---|---|---|---|
+| 1d_leveling | 8 | 0.894 | passes | none |
+| 2d_traverse | 13 | 0.547 | passes | none |
+| 2d_trilateration | 9 | 1.144 | passes | none |
+| 3d_gnss | 27 | 1.113 | passes | none |
+| mixed_network | 25 | 1.282 | passes | DIR007, DIR008, BL004 |
+
+The flags in `mixed_network` are not blunders. The generator drew a large but
+genuine random error (−2.6σ) for direction DIR008. Because DIR007 and DIR008
+form a two-direction set at BM01, the set's orientation unknown splits that
+error equally between them (|w| = 3.63 for both), and the resulting shift of
+TS03 also raises the standardized residual of baseline BL004 (BM01 → TS03).
+This is how data snooping behaves with purely random errors: a 3σ threshold
+also flags some good observations. Over 300 random seeds, the mixed network
+averaged 0.12 flags per adjustment and passed the global test in 94 % of the
+runs, as expected for a correct model.
+
+The committed outputs in each `Result/` folder were generated with plugin
+version 1.0.6 in QGIS 3.44.
 
 ## Testing Robust Estimation
 

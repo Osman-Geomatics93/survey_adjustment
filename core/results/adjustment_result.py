@@ -5,6 +5,8 @@ This module defines the output data structures for the least-squares adjustment,
 including adjusted coordinates, residuals, statistics, and error ellipses.
 """
 
+from __future__ import annotations
+
 import json
 import math
 from dataclasses import dataclass, field
