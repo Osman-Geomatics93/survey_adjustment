@@ -10,13 +10,17 @@ on:
 jobs:
   test:
     name: pytest (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
         # 3.9 is the Python bundled with QGIS 3.22/3.28 LTR (qgisMinimumVersion=3.22);
         # modules using PEP 604 (`X | None`) annotations need `from __future__ import annotations`.
         python-version: ["3.9", "3.10", "3.11", "3.12"]
+        include:
+          # actions/setup-python has no Python 3.9 build for newer Ubuntu images.
+          - python-version: "3.9"
+            runner: ubuntu-24.04
 
     steps:
       - name: Check out repository
