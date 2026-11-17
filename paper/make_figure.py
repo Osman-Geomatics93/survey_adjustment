@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 RESULT = ROOT / "examples" / "2d_traverse" / "Result" / "Adjustment_Result.json"
 OUTPUT = ROOT / "paper" / "figure.png"
 
-ELLIPSE_SCALE = 10000         # exaggeration factor for drawing the ellipses
+ELLIPSE_SCALE = 5000          # exaggeration factor for drawing the ellipses
 CHI2_2DOF_95 = 5.991464547    # chi-square quantile, 2 degrees of freedom, 95 %
 TIMES = "×"              # multiplication sign
 

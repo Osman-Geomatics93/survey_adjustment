@@ -104,7 +104,7 @@ registers the Processing algorithms, imports the QGIS API lazily, and converts
 between QGIS data structures and core objects. Four design decisions shape the
 software:
 
-1. **QGIS-free core.** Because the core imports nothing from QGIS, its 200
+1. **QGIS-free core.** Because the core imports nothing from QGIS, its 212
    automated tests run in continuous integration on Python 3.9–3.12 without a
    QGIS installation, and the same solvers can be called from notebooks or
    servers.
@@ -151,10 +151,12 @@ over many residuals does not cause good observations to be rejected.
 # Validation and example usage
 
 The repository ships five worked datasets — 1D leveling, a 2D traverse, 2D
-trilateration, a 3D GNSS network, and a mixed network — four of which include
-committed JSON, HTML, and GeoPackage outputs that double as regression
-fixtures. \autoref{fig:traverse} shows the result for the 2D traverse. The tools
-run from the Processing toolbox or from Python:
+trilateration, a 3D GNSS network, and a mixed network — each with committed
+JSON, HTML, and GeoPackage outputs. Their observations are generated
+reproducibly from the design geometry, with random errors drawn from each
+observation's stated precision, and all five adjustments pass the global
+model test. \autoref{fig:traverse} shows the result for the 2D traverse. The
+tools run from the Processing toolbox or from Python:
 
 ```python
 import processing
@@ -172,7 +174,7 @@ processing.run("survey_adjustment:adjust_network_2d", {
 
 ![Adjustment of the example 2D traverse (two fixed control points, three new
 points, 23 distance, direction, and angle observations). (a) Adjusted points and
-95 % error ellipses, drawn 10,000 times enlarged; labels give the semi-axes.
+95 % error ellipses, drawn 5,000 times enlarged; labels give the semi-axes.
 (b) Absolute standardized residuals used for data snooping; no observation
 exceeds the outlier threshold. Generated from the plugin's JSON report by
 `paper/make_figure.py`.\label{fig:traverse}](figure.png)
