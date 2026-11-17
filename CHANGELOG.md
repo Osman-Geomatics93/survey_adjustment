@@ -7,13 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned
+- Network visualization with automatic sketching
+- Batch processing for multiple networks
+- Export to additional formats (DXF, KML)
+
+---
+
+## [1.1.0] - 2026-11-17
+
 ### Added
 - Test suites for the 1D leveling, 3D GNSS, mixed and robust solvers, checked against closed-form results (#5).
 - `examples/generate_observations.py`: reproducible generator for the example observations (#25).
 - Committed outputs for the `2d_trilateration` example (#25).
 
+- Global chi-square test checks against table values for all four solvers (#22).
+
 ### Changed
 - The example observations now carry random errors consistent with their stated sigmas, so every example passes the global chi-square test; previously the errors were 3–13 times smaller than the sigmas and every example failed at the lower bound (#25).
+- JOSS paper rewritten for the current submission requirements, with a results figure and verified references (#3).
 
 ### Fixed
 - The global chi-square test in the 1D leveling and 3D GNSS solvers used the confidence level as its significance level, so with the default settings it accepted only the central 5 % of the distribution and failed almost every network (#22).
@@ -21,11 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The plugin failed to import on Python 3.9, the interpreter bundled with QGIS 3.22 and 3.28 LTR; CI now also tests Python 3.9 (#1).
 - The 3D GNSS and mixed solvers now standardize residuals with the a-priori sigma0, like the 1D and 2D solvers, so outlier flags are consistent across solvers; consistent data no longer produces NaN standardized residuals (#17).
 - GNSS redundancy numbers are computed from the full 3×3 covariance blocks and now sum to the degrees of freedom for correlated baselines (#17).
-
-### Planned
-- Network visualization with automatic sketching
-- Batch processing for multiple networks
-- Export to additional formats (DXF, KML)
 
 ---
 

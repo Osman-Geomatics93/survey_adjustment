@@ -11,7 +11,7 @@ authors:
   - given-names: Osman Osama Ahmed
     family-names: Ibrahim
     email: 422436@ogr.ktu.edu.tr
-    affiliation: Karadeniz Technical University
+    affiliation: "Karadeniz Technical University; Hydraulics Research Center, Sudan"
     orcid: "https://orcid.org/0009-0003-2594-6310"
 repository-code: "https://github.com/Osman-Geomatics93/survey_adjustment"
 url: "https://github.com/Osman-Geomatics93/survey_adjustment"
@@ -34,15 +34,12 @@ keywords:
   - error ellipse
   - robust estimation
 license: GPL-2.0-or-later
-version: "1.0.6"
-date-released: "2026-06-10"
+version: "1.1.0"
+date-released: "2026-11-17"
 identifiers:
   - type: doi
     value: "10.5281/zenodo.20571215"
     description: "Concept DOI (resolves to the latest version)"
-  - type: doi
-    value: "10.5281/zenodo.20618443"
-    description: "DOI for version 1.0.6"
 preferred-citation:
   type: software
   authors:
@@ -51,5 +48,6 @@ preferred-citation:
   title: "Survey Adjustment & Network Analysis: A QGIS Plugin for Least-Squares Adjustment of Survey Networks"
   year: 2026
   url: "https://github.com/Osman-Geomatics93/survey_adjustment"
-  version: "1.0.6"
+  version: "1.1.0"
+  doi: "10.5281/zenodo.20571215"
   repository-code: "https://github.com/Osman-Geomatics93/survey_adjustment"
