@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.1.2] - 2026-11-18
+
+### Changed
+- Maintainer contact email is now osmangeomatics93@gmail.com (metadata.txt, CITATION.cff, README, SECURITY.md); the previous university address is no longer accessible (#33).
+
+---
+
 ## [1.1.1] - 2026-11-17
 
 ### Fixed
