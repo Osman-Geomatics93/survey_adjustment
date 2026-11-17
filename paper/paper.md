@@ -34,7 +34,7 @@ probable coordinates together with statistical evidence of how *precise* and how
 *trustworthy* those coordinates are [@ghilani2017; @mikhail1976].
 
 `Survey Adjustment & Network Analysis` brings this workflow into QGIS
-[@qgis2024]. It registers a Processing provider with five tools: a network
+[@qgis2026]. It registers a Processing provider with five tools: a network
 validator and four least-squares solvers for 1D leveling, 2D classical networks,
 3D GNSS baseline networks with full per-baseline covariance, and mixed networks
 that combine all three observation families in a single estimation. Each run
@@ -51,7 +51,7 @@ show that the observations are statistically consistent, that gross errors would
 have been detected, and how large an undetected error could distort the result.
 This quality-control layer — the global model test, data snooping, redundancy
 numbers, and internal and external reliability of the Delft school
-[@baarda1968; @teunissen2006; @koch1999] — is standard in commercial adjustment
+[@baarda1968; @teunissen2024; @koch1999] — is standard in commercial adjustment
 packages but largely absent from the open GIS ecosystem. Three groups are
 affected:
 
@@ -67,8 +67,9 @@ affected:
 
 The plugin addresses these needs with (i) one engine spanning 1D, 2D, 3D GNSS,
 and mixed adjustment; (ii) the full Delft-school diagnostic suite together with
-robust iteratively reweighted least squares (IRLS) using Huber, Danish, and
-IGG-III weight functions [@huber1964; @yang1999; @yang2001]; (iii) outputs that
+robust iteratively reweighted least squares (IRLS) using Huber [@huber1964],
+Danish [@krarup1980], and IGG-III [@yang1994; @yang2002] weight functions;
+(iii) outputs that
 are native GIS layers and algorithms that run from the Processing toolbox, the
 graphical modeler, batch mode, or the Python console; and (iv) reproducible
 results, since every JSON report carries the full parameter covariance matrix and
@@ -78,10 +79,10 @@ a snapshot of the settings used.
 
 | Software | Licence | Relation to QGIS | Spatial output |
 |:--|:--|:--|:--|
-| MicroSurvey STAR\*NET, Sweco MOVE3, Trimble Business Center, Leica Infinity | Commercial | None (stand-alone) | Proprietary formats |
+| STAR\*NET [@starnet], MOVE3 [@move3], Trimble Business Center [@tbc], Leica Infinity [@infinity] | Commercial | None (stand-alone) | Proprietary formats |
 | GNU GaMa [@cepek2002] | Open source | None (command line, XML) | Tabular reports |
-| `SurveyingCalculation` plugin | Open source | Wraps a GaMa binary; QGIS 2.x | Layers |
-| `QNET` plugin | Open source | Dialog-based plugin | Layers |
+| `SurveyingCalculation` [@surveyingcalculation] | Open source | Plugin calling a GaMa binary; QGIS 2.x | Layers |
+| `QNET` [@qnet2025] | Open source | Dialog-based plugin; QGIS 3.34+ | Point layer + text report |
 | **This work** | **Open source (GPL-2.0)** | **Processing provider, QGIS 3.22+** | **GeoPackage layers + JSON/HTML** |
 
 Commercial packages are mature and reliability-aware but are licensed and
@@ -92,9 +93,13 @@ C++ binary for every platform, the integration path that left
 `SurveyingCalculation` tied to QGIS 2.x. A pure-Python engine installs from the
 official plugin repository with no compilation, can be read and modified by the
 geomatics users who rely on it, and exchanges data with QGIS in memory rather
-than through XML files. Existing QGIS-side tools are dialog-oriented; exposing
-the adjustment as Processing algorithms is what makes it scriptable, chainable
-in models, and testable.
+than through XML files. The recent `QNET` plugin [@qnet2025] adjusts classical
+and GNSS observations with free-network datum and robust weighting from a
+dialog; its documented outputs (adjusted coordinates, sigmas, error ellipses,
+and residuals) do not include the global model test, standardized residuals,
+or reliability measures, and it is not exposed as Processing algorithms. Those
+two gaps, Delft-school quality control and a scriptable Processing interface
+that can be chained in models and tested, are the ones this work fills.
 
 # Software design
 
@@ -141,7 +146,7 @@ chi-square global test, standardized residuals
 $w_i = v_i / (\sigma_0 \sqrt{(Q_{vv})_{ii}})$ for data snooping, redundancy
 numbers $r_i = (Q_{vv} P)_{ii}$ [@baarda1968], the minimal detectable bias
 $\mathrm{MDB}_i = (k_\alpha + k_\beta)\,\hat{\sigma}_0\,\sigma_i / \sqrt{r_i}$,
-and its effect on the coordinates (external reliability) [@teunissen2006]. Error
+and its effect on the coordinates (external reliability) [@teunissen2024]. Error
 ellipses follow from the eigen-decomposition of each point's $2\times2$
 covariance. Robust IRLS rescales weights by $u(|w_i|)$ in an outer loop. Its
 standardized residuals use the a-priori $\sigma_0$ and the cofactors of the
