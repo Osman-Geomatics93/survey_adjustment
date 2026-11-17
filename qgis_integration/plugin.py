@@ -6,7 +6,10 @@ all QGIS imports are performed lazily inside methods.
 
 from __future__ import annotations
 
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 
 class SurveyAdjustmentPlugin:
@@ -78,8 +81,8 @@ class SurveyAdjustmentPlugin:
             if self._provider is not None:
                 QgsApplication.processingRegistry().removeProvider(self._provider)
         except Exception:
-            # QGIS might already be shutting down; ignore.
-            pass
+            # QGIS might already be shutting down; unloading must not fail.
+            logger.debug("Could not remove the Processing provider", exc_info=True)
         finally:
             self._provider = None
 
@@ -88,7 +91,7 @@ class SurveyAdjustmentPlugin:
             try:
                 self.iface.removePluginMenu("Survey Adjustment", self._settings_action)
             except Exception:
-                pass
+                logger.debug("Could not remove the settings menu item", exc_info=True)
             finally:
                 self._settings_action = None
 
@@ -96,6 +99,6 @@ class SurveyAdjustmentPlugin:
             try:
                 self.iface.removePluginMenu("Survey Adjustment", self._reset_action)
             except Exception:
-                pass
+                logger.debug("Could not remove the reset menu item", exc_info=True)
             finally:
                 self._reset_action = None
