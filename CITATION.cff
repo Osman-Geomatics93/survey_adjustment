@@ -40,6 +40,9 @@ identifiers:
   - type: doi
     value: "10.5281/zenodo.20571215"
     description: "Concept DOI (resolves to the latest version)"
+  - type: doi
+    value: "10.5281/zenodo.24325338"
+    description: "DOI for version 1.1.2"
 preferred-citation:
   type: software
   authors:
