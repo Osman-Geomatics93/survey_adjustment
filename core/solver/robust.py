@@ -77,11 +77,13 @@ def danish_weight(w: float, c: float = 2.0) -> float:
         u(|w|) = exp(-((|w|-c)/c)^2)     if |w| > c
 
     Note: Danish method is more aggressive than Huber for large outliers.
+    As with IGG-III, the weight is floored at a small epsilon so that it never
+    underflows to exactly zero.
     """
     abs_w = abs(w)
     if abs_w <= c:
         return 1.0
-    return math.exp(-((abs_w - c) / c) ** 2)
+    return max(math.exp(-((abs_w - c) / c) ** 2), 1e-10)
 
 
 def igg3_weight(w: float, k0: float = 1.5, k1: float = 3.0) -> float:
@@ -141,6 +143,65 @@ def get_weight_function(
         return lambda w: igg3_weight(w, igg3_k0, igg3_k1)
     else:
         return None
+
+
+# ---------------------------------------------------------------------------
+# IRLS Reweighting Schedule (used by the solvers' outer loops)
+# ---------------------------------------------------------------------------
+
+class IRLSReweighter:
+    """Robust weight updates for a solver's IRLS outer loop.
+
+    Two safeguards keep the loop stable and stop it from rejecting good data:
+
+    - Standardized residuals are formed with the residual cofactors of the
+      ordinary least-squares solution, frozen after the first solve
+      (``freeze_qvv``). Re-deriving them from the down-weighted solution would
+      inflate a down-weighted observation's variance, shrink its standardized
+      residual, and restore its full weight in the next iteration, so the
+      weights would oscillate instead of converging.
+    - Redescending methods (Danish, IGG-III) start from a converged Huber
+      solution. In the ordinary LS solution a gross error is smeared over many
+      residuals, and a redescending function applied there rejects good
+      observations along with the bad one.
+    """
+
+    def __init__(
+        self,
+        method: RobustMethod,
+        tolerance: float = 1e-3,
+        huber_c: float = 1.5,
+        danish_c: float = 2.0,
+        igg3_k0: float = 1.5,
+        igg3_k1: float = 3.0,
+    ):
+        self.method = method
+        self.tolerance = tolerance
+        self.qvv: Optional[np.ndarray] = None
+        self._target = get_weight_function(method, huber_c, danish_c, igg3_k0, igg3_k1)
+        self._huber = get_weight_function(RobustMethod.HUBER, huber_c=huber_c)
+        self._warm_start = method in (RobustMethod.DANISH, RobustMethod.IGG3)
+
+    def freeze_qvv(self, qvv_diag: np.ndarray) -> np.ndarray:
+        """Store diag(Qvv) from the first (unit-weight) solve and return the stored values."""
+        if self.qvv is None:
+            self.qvv = np.maximum(np.asarray(qvv_diag, dtype=float), 1e-30)
+        return self.qvv
+
+    def update(self, standardized_residuals: np.ndarray, weights: np.ndarray) -> Tuple[np.ndarray, bool]:
+        """Compute the next weight factors.
+
+        Returns:
+            (new_weights, converged). ``converged`` is True only once the target
+            method's weights have settled, never at the end of the Huber phase.
+        """
+        func = self._huber if self._warm_start else self._target
+        new_weights = compute_robust_weights(standardized_residuals, func)
+        settled = len(new_weights) == 0 or float(np.max(np.abs(new_weights - weights))) < self.tolerance
+        if settled and self._warm_start:
+            self._warm_start = False  # Huber phase done; continue with the target method
+            return new_weights, False
+        return new_weights, settled
 
 
 # ---------------------------------------------------------------------------

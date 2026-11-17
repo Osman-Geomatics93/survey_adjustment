@@ -29,6 +29,7 @@ from survey_adjustment.core.solver.robust import (
     get_weight_function,
     compute_robust_weights,
     irls_solve,
+    IRLSReweighter,
 )
 
 
@@ -49,6 +50,9 @@ class TestWeightFunctions:
     @pytest.mark.parametrize("w", [2.5, 4.0, -6.0])
     def test_danish_outside(self, w):
         assert danish_weight(w, c=2.0) == pytest.approx(math.exp(-((abs(w) - 2.0) / 2.0) ** 2))
+
+    def test_danish_never_exactly_zero(self):
+        assert danish_weight(1e6, c=2.0) > 0.0
 
     def test_igg3_regions(self):
         assert igg3_weight(1.0, k0=1.5, k1=3.0) == 1.0
@@ -161,23 +165,61 @@ class TestRobustLeveling:
         assert weights[blunder_id] == min(weights.values())
         assert weights[blunder_id] < 0.5
 
-    # Known defect: redescending estimators start from the smeared LS solution and
-    # reject good observations. See issue #16; remove the markers once it is fixed.
+    # Regression tests for issue #16 (oscillating weights; redescending methods
+    # rejecting good observations when started from the smeared LS solution).
 
-    @pytest.mark.xfail(strict=True, reason="issue #16: robust estimation does not isolate the blunder")
+    @pytest.mark.parametrize("blunder", [0.005, 0.010, 0.020, 0.050])
     @pytest.mark.parametrize("estimator", [RobustEstimator.HUBER, RobustEstimator.DANISH,
                                            RobustEstimator.IGG3])
-    def test_robust_recovers_heights_to_millimetre(self, estimator):
-        robust = adjust_leveling_1d(self._network(), AdjustmentOptions(robust_estimator=estimator))
-        weights = [r.weight_factor for r in robust.residual_details]
-        assert robust.robust_converged
-        assert sum(u < 0.01 for u in weights) == 1  # only the blunder is rejected
-        assert self._max_height_error(robust) < 0.001
-
-    @pytest.mark.xfail(strict=True, reason="issue #16: IRLS does not converge for redescending methods")
-    @pytest.mark.parametrize("estimator", [RobustEstimator.DANISH, RobustEstimator.IGG3])
-    def test_redescending_irls_converges_for_small_blunder(self, estimator):
+    def test_robust_recovers_heights_to_millimetre(self, estimator, blunder):
         network = self._network()
-        network.get_observation("L3").value -= self.BLUNDER[1] - 0.005  # 5 mm blunder
+        network.get_observation(self.BLUNDER[0]).value += blunder - self.BLUNDER[1]
         robust = adjust_leveling_1d(network, AdjustmentOptions(robust_estimator=estimator))
+
         assert robust.robust_converged
+        assert self._max_height_error(robust) < 0.001
+        weights = {r.obs_id: r.weight_factor for r in robust.residual_details}
+        assert min(weights, key=weights.get) == self.BLUNDER[0]
+
+    @pytest.mark.parametrize("estimator", [RobustEstimator.DANISH, RobustEstimator.IGG3])
+    def test_redescending_rejects_only_the_blunder(self, estimator):
+        robust = adjust_leveling_1d(self._network(), AdjustmentOptions(robust_estimator=estimator))
+        rejected = [r.obs_id for r in robust.residual_details if r.weight_factor < 0.01]
+        assert rejected == [self.BLUNDER[0]]
+
+
+class TestIRLSReweighter:
+
+    def test_redescending_methods_start_with_huber(self):
+        reweighter = IRLSReweighter(RobustMethod.IGG3, tolerance=1e-3)
+        w = np.array([0.5, 2.0, 5.0])
+        weights, converged = reweighter.update(w, np.ones(3))
+        np.testing.assert_allclose(weights, [huber_weight(x) for x in w])
+        assert not converged
+
+        # Huber weights have settled: not converged yet, the next update uses IGG-III.
+        weights, converged = reweighter.update(w, weights)
+        assert not converged
+        np.testing.assert_allclose(weights, [huber_weight(x) for x in w])
+
+        weights, converged = reweighter.update(w, weights)
+        assert not converged
+        np.testing.assert_allclose(weights, [igg3_weight(x) for x in w])
+
+        weights, converged = reweighter.update(w, weights)
+        assert converged
+
+    def test_huber_converges_directly(self):
+        reweighter = IRLSReweighter(RobustMethod.HUBER, tolerance=1e-3)
+        w = np.array([0.5, 2.0])
+        weights, converged = reweighter.update(w, np.ones(2))
+        assert not converged
+        _, converged = reweighter.update(w, weights)
+        assert converged
+
+    def test_qvv_is_frozen_after_first_call(self):
+        reweighter = IRLSReweighter(RobustMethod.HUBER)
+        first = reweighter.freeze_qvv(np.array([1.0, 2.0]))
+        second = reweighter.freeze_qvv(np.array([9.0, 9.0]))
+        np.testing.assert_array_equal(first, second)
+        np.testing.assert_array_equal(second, [1.0, 2.0])
