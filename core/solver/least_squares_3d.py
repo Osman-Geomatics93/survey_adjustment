@@ -543,7 +543,7 @@ def adjust_gnss_3d(
         chi_test = chi_square_global_test(
             vTPv=vTPv,
             dof=dof,
-            alpha=options.confidence_level,
+            alpha=options.alpha,
             a_priori_variance=options.a_priori_variance,
         )
 
