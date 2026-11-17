@@ -178,32 +178,42 @@ published as a documentation site built from the repository.
 
 # Research impact statement
 
-<!-- TODO (author): replace the sentence on own use with concrete, checkable
-     evidence — e.g. course code and semester where it was taught, project or
-     thesis titles, a conference talk, a validation report against GNU GaMa,
-     or named external users. JOSS desk-rejects future-use claims. -->
+<!-- TODO (author): replace every [bracketed] placeholder with specific,
+     checkable details, or delete the sentence. Reviewers may ask for proof. -->
 
 The plugin has been distributed through the official QGIS plugin repository
 since January 2026 and had been downloaded more than 1,300 times across three
-releases by November 2026. The author uses it in surveying projects and in
-teaching adjustment computations at Karadeniz Technical University. Its
-significance lies in making reliability-aware adjustment — previously tied to
-licensed software — available where geospatial data are already managed, and in
-a form that supports reproducible research: the core can be embedded in
+releases by November 2026. It is in active use in three settings:
+
+- **Teaching.** It is used in [course name and code, e.g. "Adjustment
+  Computations (HRT 3xx)"] at [institution] in [semester], where students
+  adjust their own field networks and interpret the reliability diagnostics.
+- **Practice and research.** It was used to adjust [the network(s) of
+  project or thesis title, with a short description: size, observation
+  types, purpose].
+- **External users.** It is used by [users or groups outside the author's
+  work, e.g. surveyors or students at named institutions].
+
+Its significance lies in making reliability-aware adjustment — previously tied
+to licensed software — available where geospatial data are already managed, and
+in a form that supports reproducible research: the core can be embedded in
 automated monitoring pipelines, and each JSON report contains everything needed
 to re-derive and audit a published result.
 
 # AI usage disclosure
 
-<!-- TODO (author): this statement must be complete and accurate; JOSS treats an
-     incomplete disclosure as an ethics breach. List every tool and version, and
-     state honestly whether AI also helped write code, tests, or documentation. -->
+<!-- TODO (author): fill in the [bracketed] model versions and scope. JOSS
+     treats an incomplete or inaccurate disclosure as an ethics breach. -->
 
-Generative AI (Anthropic Claude, model Claude Opus 5.5, via Claude Code) was used
-to revise the structure and wording of this paper and to identify and fix a
-Python 3.9 compatibility issue. The author defined the software's design and
-algorithms, reviewed and edited all AI-assisted text and code, and verified the
-results against the automated test suite and the worked examples.
+Anthropic's Claude, used through the Claude Code assistant, was used during
+development of the software: [model version(s), e.g. "Claude Opus 4.5"] assisted
+with [scope, e.g. "implementing parts of the solvers and QGIS integration
+layer, writing unit tests, and drafting the README and documentation"]. Claude
+Opus 5.5 was used to restructure and copy-edit this paper, to generate the
+figure script, and to identify and fix a Python 3.9 compatibility issue. The
+author chose the adjustment models, algorithms, and software architecture,
+reviewed and edited all AI-assisted code and text, and verified correctness
+against the automated test suite and the worked examples.
 
 # Acknowledgements
 
